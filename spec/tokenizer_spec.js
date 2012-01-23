@@ -211,6 +211,75 @@ var specs = {
       { type: 'text', value: '! ' },
       { type: 'closeTag', key: 'begin' },
     ]
+  },
+
+  'Strip standalone lines': {
+    template: '\n{{#standalone}}\n{{/standalone}}\r\nblah',
+    expected: [
+      { type: 'newline', value: '\n' },
+      { type: 'openTag', key: 'standalone' },
+      { type: 'closeTag', key: 'standalone' },
+      { type: 'text', value: 'blah' },
+    ]
+  },
+
+  'Strip indented standalone lines': {
+    template: '\n  {{#standalone}}\n   {{/standalone}}\r\nblah',
+    expected: [
+      { type: 'newline', value: '\n' },
+      { type: 'openTag', key: 'standalone' },
+      { type: 'closeTag', key: 'standalone' },
+      { type: 'text', value: 'blah' },
+    ]
+  },
+
+  'Standalone lines with \\r\\n endings': {
+    template: '\r\n  {{#standalone}}\r\n   {{/standalone}}\r\nblah',
+    expected: [
+      { type: 'newline', value: '\r\n' },
+      { type: 'openTag', key: 'standalone' },
+      { type: 'closeTag', key: 'standalone' },
+      { type: 'text', value: 'blah' },
+    ]
+  },
+
+  'Standalone without previous line': {
+    template: '  {{#standalone}}\n#{{/standalone}}\n/',
+    expected: [
+      { type: 'openTag', key: 'standalone' },
+      { type: 'text', value: '#' },
+      { type: 'closeTag', key: 'standalone' },
+      { type: 'newline', value: '\n' },
+      { type: 'text', value: '/' }
+    ]
+  },
+
+  'Standalone without next line': {
+    template: '#{{#standalone}}\n/\n  {{/standalone}}',
+    expected: [
+      { type: 'text', value: '#' },
+      { type: 'openTag', key: 'standalone' },
+      { type: 'newline', value: '\n' },
+      { type: 'text', value: '/' },
+      { type: 'newline', value: '\n' },
+      { type: 'closeTag', key: 'standalone' },
+    ]
+  },
+
+  'Do NOT strip single-line sections': {
+    template: ' {{#oneline}}YES{{/oneline}}\n {{#oneline}}GOOD{{/oneline}}\n',
+    expected: [
+      { type: 'text', value: ' ' },
+      { type: 'openTag', key: 'oneline' },
+      { type: 'text', value: 'YES' },
+      { type: 'closeTag', key: 'oneline' },
+      { type: 'newline', value: '\n' },
+      { type: 'text', value: ' ' },
+      { type: 'openTag', key: 'oneline' },
+      { type: 'text', value: 'GOOD' },
+      { type: 'closeTag', key: 'oneline' },
+      { type: 'newline', value: '\n' }
+    ]
   }
 }
 

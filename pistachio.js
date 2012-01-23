@@ -20,12 +20,43 @@ var isString = function(obj) {
 
 function Tokens(template) {
   this.tokens = [];
+  if (!template) return;
+  template = this.stripStandaloneTags(template);
   this.tokenize(template);
 }
 
 Tokens.prototype.RE = {
   newline: /(\r\n|\n)/g,
-  tag: /\{\{(!|\{|&|#|\/|\^|>)?\s*(\S[\s\S]+?)\s*\}?\}\}/gm
+  tag: /\{\{(!|\{|&|#|\/|\^|>)?\s*(\S[\s\S]*?)\s*\}?\}\}/gm,
+  line: /(?:.*(\r\n|\n)?)/g,
+  standalone: /^(\s*)(\{\{(?:#|\/|^|!)[^\{]*\}\})(\s*)$/,
+  multilineCommentStart: /^\s*\{\{!\s*$/,
+  multilineCommentEnd: /^\s*\}\}\s*$/,
+};
+
+Tokens.prototype.stripStandaloneTags = function(template) {
+  var i, len, line
+    , inComment = false
+    , out = []
+    , lines = template.match(this.RE.line);
+
+  for (i = 0, len = lines.length; i < len; i++) {
+    line = lines[i];
+
+    if (this.RE.multilineCommentStart.test(line)) {
+      inComment = true;
+      continue;
+    }
+
+    if (inComment) {
+      if (this.RE.multilineCommentEnd.test(line)) inComment = false;
+      continue;
+    }
+
+    out.push(line.replace(this.RE.standalone, '$2'));
+  }
+
+  return out.join('');
 };
 
 Tokens.prototype.tokenize = function(template) {
@@ -104,8 +135,12 @@ Tokens.prototype.newlineToken = function(value) {
 Tokens.prototype.each = function(cb) {
   var i = 0, len = this.tokens.length;
   for (;i < len; i++) {
-    cb(this.tokens[i]);
+    cb(this.tokens[i], i);
   }
+};
+
+Tokens.prototype.push = function(token) {
+  this.tokens.push(token);
 };
 
 /**
@@ -133,12 +168,13 @@ function stringify(obj) {
 }
 
 function get(obj, key) {
-  var value = obj
-    , keys = key.split('.')
-    , i = 0
-    , len = keys.length;
+  var value = obj, keys, i, len;
 
-  for (; i < len; i++) {
+  if (key === '.') return obj;
+
+  keys = key.split('.');
+
+  for (i = 0, len = keys.length; i < len; i++) {
     if (value) value = value[keys[i]];
   }
 
@@ -155,23 +191,68 @@ function lookup(stack, key) {
 
 function evaluate(tokens, context) {
   var out = []
-    , stack = [context];
+    , stack = isArray(context) ? context : [context]
+    , sections = []
+    , sectionTokens;
 
-  tokens.each(function(token) {
-    var s;
+  function output(obj) {
+    if (isArray(obj)) out.concat(obj);
+    else out.push(obj);
+  }
 
-    if (token.type == 'text') {
-      out.push(token.value);
+  //console.log(tokens);
+
+  tokens.each(function(token, index) {
+    var s, begin, sContext, i, len;
+
+    if (sections.length > 0) {
+      if (token.type === 'openTag') {
+        sections.push(token.key);
+        sectionTokens.push(token);
+        return;
+      } else if (token.type ==='closeTag') {
+        if (sections.length > 1) {
+          sections.pop();
+          sectionTokens.push(token);
+          return;
+        }
+      } else {
+        sectionTokens.push(token);
+        return;
+      }
     }
 
-    if (token.type == 'newline') {
-      out.push(token.value);
+    if (token.type === 'text') {
+      output(token.value);
     }
 
-    if (token.type == 'tag') {
+    if (token.type === 'newline') {
+      output(token.value);
+    }
+
+    if (token.type === 'tag') {
       s = stringify(lookup(stack, token.key));
       s = token.escape ? escapeHTML(s) : s;
-      out.push(s);
+      output(s);
+    }
+
+    if (token.type === 'openTag') {
+      sectionTokens = new Tokens();
+      sections.push(token.key);
+    }
+
+    if (token.type === 'closeTag') {
+      sections.pop();
+      if (sContext = lookup(stack, token.key)) {
+        if (isArray(sContext)) {
+          for (i = 0, len = sContext.length; i < len; i++) {
+            output(evaluate(sectionTokens, stack.concat(sContext[i])));
+          }
+        }
+        else {
+          output(evaluate(sectionTokens, stack.concat(sContext)));
+        }
+      }
     }
   });
 
