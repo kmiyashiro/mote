@@ -109,20 +109,73 @@ Tokens.prototype.each = function(cb) {
 };
 
 /**
+ * HTML Escaping
+ */
+
+var escape = {
+  chars: /[&"<>]/g,
+  map: { '&': '&amp;', '"': '&quot;', '<': '&lt;', '>': '&gt;' }
+}
+
+function escapeHTML(str) {
+  return str.replace(escape.chars, function(char) {
+    return escape.map[char];
+  });
+}
+
+/**
  * Evaluate
  */
+
+function stringify(obj) {
+  if (!obj) return '';
+  return obj.toString();
+}
+
+function get(obj, key) {
+  var value = obj
+    , keys = key.split('.')
+    , i = 0
+    , len = keys.length;
+
+  for (; i < len; i++) {
+    if (value) value = value[keys[i]];
+  }
+
+  return value;
+}
+
+function lookup(stack, key) {
+  var i = stack.length - 1, value;
+  for (; i >= 0; i--) {
+    if (value = get(stack[i], key)) return value;
+  }
+  return undefined;
+}
 
 function evaluate(tokens, context) {
   var out = []
     , stack = [context];
 
   tokens.each(function(token) {
-    if (token.type = 'text') {
+    var s;
+
+    if (token.type == 'text') {
       out.push(token.value);
+    }
+
+    if (token.type == 'newline') {
+      out.push(token.value);
+    }
+
+    if (token.type == 'tag') {
+      s = stringify(lookup(stack, token.key));
+      s = token.escape ? escapeHTML(s) : s;
+      out.push(s);
     }
   });
 
-  return out.join();
+  return out.join('');
 }
 
 /**
