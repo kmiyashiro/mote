@@ -29,7 +29,7 @@ Tokens.prototype.RE = {
   newline: /(\r\n|\n)/g,
   tag: /\{\{(!|\{|&|#|\/|\^|>)?\s*(\S[\s\S]*?)\s*\}?\}\}/gm,
   line: /(?:.*(\r\n|\n)?)/g,
-  standalone: /^(\s*)(\{\{(?:#|\/|^|!)[^\{]*\}\})(\s*)$/,
+  standalone: /^(\s*)(\{\{(?:#|\/|\^|!)[^\{]*\}\})(\s*)$/,
   multilineCommentStart: /^\s*\{\{!\s*$/,
   multilineCommentEnd: /^\s*\}\}\s*$/,
 };
@@ -193,20 +193,23 @@ function evaluate(tokens, context) {
   var out = []
     , stack = isArray(context) ? context : [context]
     , sections = []
-    , sectionTokens;
+    , sectionTokens
+    , invert = false;
 
   function output(obj) {
     if (isArray(obj)) out.concat(obj);
     else out.push(obj);
   }
 
-  //console.log(tokens);
-
   tokens.each(function(token, index) {
-    var s, begin, sContext, i, len;
+    var s, begin, sContext, i, len, renderSection;
 
     if (sections.length > 0) {
       if (token.type === 'openTag') {
+        sections.push(token.key);
+        sectionTokens.push(token);
+        return;
+      } else if (token.type === 'invertTag') {
         sections.push(token.key);
         sectionTokens.push(token);
         return;
@@ -239,11 +242,21 @@ function evaluate(tokens, context) {
     if (token.type === 'openTag') {
       sectionTokens = new Tokens();
       sections.push(token.key);
+      invert = false;
+    }
+
+    if (token.type === 'invertTag') {
+      sectionTokens = new Tokens();
+      sections.push(token.key);
+      invert = true;
     }
 
     if (token.type === 'closeTag') {
       sections.pop();
-      if (sContext = lookup(stack, token.key)) {
+      sContext = lookup(stack, token.key);
+      if (isArray(sContext) && (sContext.length === 0)) sContext = false;
+      renderSection = invert ? !sContext : sContext;
+      if (renderSection) {
         if (isArray(sContext)) {
           for (i = 0, len = sContext.length; i < len; i++) {
             output(evaluate(sectionTokens, stack.concat(sContext[i])));
