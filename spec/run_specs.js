@@ -35,7 +35,7 @@ function runSpec(spec) {
 
   if (error) {
     line('[ERROR] ' + title, 0, 'red');
-    line(error.tostring(), 1);
+    line(error.toString(), 1);
     stats.error += 1;
   } else if (actual !== spec.expected) {
     line('[FAIL] ' + title, 0, 'red');
