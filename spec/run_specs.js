@@ -25,7 +25,8 @@ var stats = {
 
 function runSpec(spec) {
   var error, actual
-    , title = spec.name + ': ' + spec.desc;
+    , title = spec.name + ': ' + spec.desc
+    , status;
 
   try {
     actual = pistachio.render(spec.template, spec.data);
@@ -37,21 +38,27 @@ function runSpec(spec) {
     line('[ERROR] ' + title, 0, 'red');
     line(error.toString(), 1);
     stats.error += 1;
+    status = 'error';
   } else if (actual !== spec.expected) {
     line('[FAIL] ' + title, 0, 'red');
     line('expect: '.yellow + JSON.stringify(spec.expected), 2);
     line('actual: '.yellow + JSON.stringify(actual), 2);
     stats.fail += 1;
+    status = 'fail';
   } else {
     line('[PASS] ' + title, 0, 'green');
     stats.pass += 1;
+    status = 'pass';
   }
+  return status;
 }
 
 // Run the tests
-specs.forEach(function(spec) {
-  runSpec(spec);
-});
+var status;
+for (var i = 0; i < specs.length; i++) {
+  status = runSpec(specs[i]);
+  if (!(status === 'pass')) break;
+}
 
 pass = (stats.pass + ' passed').green;
 fail = (stats.fail + ' failed').red;
