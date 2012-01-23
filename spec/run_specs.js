@@ -39,10 +39,8 @@ function runSpec(spec) {
     stats.error += 1;
   } else if (actual !== spec.expected) {
     line('[FAIL] ' + title, 0, 'red');
-    line('expected:', 1, 'yellow');
-    line(JSON.stringify(spec.expected), 2);
-    line('actual:', 1, 'yellow');
-    line(JSON.stringify(actual), 2);
+    line('expect: '.yellow + JSON.stringify(spec.expected), 2);
+    line('actual: '.yellow + JSON.stringify(actual), 2);
     stats.fail += 1;
   } else {
     line('[PASS] ' + title, 0, 'green');
