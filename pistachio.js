@@ -29,7 +29,7 @@ Tokens.prototype.RE = {
   newline: /(\r\n|\n)/g,
   tag: /\{\{(!|\{|&|#|\/|\^|>)?\s*(\S[\s\S]*?)\s*\}?\}\}/gm,
   line: /(?:.*(\r\n|\n)?)/g,
-  standalone: /^(\s*)(\{\{(?:#|\/|\^|!)[^\{]*\}\})(\s*)$/,
+  standalone: /^(\s*)(\{\{(#|\/|\^|!|>)[^\{]*\}\})(\s*)$/,
   multilineCommentStart: /^\s*\{\{!\s*$/,
   multilineCommentEnd: /^\s*\}\}\s*$/,
 };
@@ -53,7 +53,10 @@ Tokens.prototype.stripStandaloneTags = function(template) {
       continue;
     }
 
-    out.push(line.replace(this.RE.standalone, '$2'));
+    out.push(line.replace(this.RE.standalone, function(m0, m1, m2, m3, m4) {
+      if (m3 === '>') return m1 + m2;
+      return m2;
+    }));
   }
 
   return out.join('');
@@ -76,10 +79,10 @@ Tokens.prototype.tokenize = function(template) {
 Tokens.prototype.tokenizeTag = function(type, key) {
   var escape = true;
   if (type === '!') this.commentToken();
-  else if (type === '#') this.specialTagToken(key, 'openTag');
-  else if (type === '/') this.specialTagToken(key, 'closeTag');
-  else if (type === '^') this.specialTagToken(key, 'invertTag');
-  else if (type === '>') this.specialTagToken(key, 'partialTag');
+  else if (type === '#') this.sectionTagToken(key, 'openTag');
+  else if (type === '/') this.sectionTagToken(key, 'closeTag');
+  else if (type === '^') this.sectionTagToken(key, 'invertTag');
+  else if (type === '>') this.partialTagToken(key);
   else if (type === '{') this.tagToken(key, false);
   else if (type === '&') this.tagToken(key, false);
   else this.tagToken(key, true);
@@ -105,10 +108,40 @@ Tokens.prototype.tagToken = function(key, escape) {
   });
 };
 
-Tokens.prototype.specialTagToken = function(key, type) {
+Tokens.prototype.sectionTagToken = function(key, type) {
   this.tokens.push({
     type: type,
     key: key
+  });
+};
+
+Tokens.prototype.partialTagToken = function(key, type) {
+  var prev1, prev2, indent = '';
+
+  if (this.tokens.length) {
+    prev1 = this.tokens.pop();
+    if ((prev1.type === 'text') && /^\s+$/.test(prev1.value)) {
+      if (this.tokens.length) {
+        prev2 = this.tokens.pop();
+        if (prev2.type === 'newline') {
+          indent = prev1.value;
+          this.tokens.push(prev2);
+        } else {
+          this.tokens.push(prev2);
+          this.tokens.push(prev1);
+        }
+      } else {
+        indent = prev1.value;
+      }
+    } else {
+      this.tokens.push(prev1);
+    }
+  }
+
+  this.tokens.push({
+    type: 'partialTag',
+    key: key,
+    indent: indent
   });
 };
 
@@ -189,12 +222,13 @@ function lookup(stack, key) {
   return undefined;
 }
 
-function evaluate(tokens, context) {
+function evaluate(tokens, context, partials, indent) {
   var out = []
     , stack = isArray(context) ? context : [context]
     , sections = []
     , sectionTokens
-    , invert = false;
+    , invert = false
+    , indent = indent || '';
 
   function output(obj) {
     if (isArray(obj)) out.concat(obj);
@@ -202,7 +236,7 @@ function evaluate(tokens, context) {
   }
 
   tokens.each(function(token, index) {
-    var s, begin, sContext, i, len, renderSection;
+    var s, begin, sContext, i, len, renderSection, partialTokens, partialOut;
 
     if (sections.length > 0) {
       if (token.type === 'openTag') {
@@ -231,6 +265,7 @@ function evaluate(tokens, context) {
 
     if (token.type === 'newline') {
       output(token.value);
+      output(indent);
     }
 
     if (token.type === 'tag') {
@@ -259,13 +294,33 @@ function evaluate(tokens, context) {
       if (renderSection) {
         if (isArray(sContext)) {
           for (i = 0, len = sContext.length; i < len; i++) {
-            output(evaluate(sectionTokens, stack.concat(sContext[i])));
+            output(evaluate(
+              sectionTokens,
+              stack.concat(sContext[i]),
+              partials,
+              indent
+            ));
           }
         }
         else {
-          output(evaluate(sectionTokens, stack.concat(sContext)));
+          output(evaluate(
+            sectionTokens,
+            stack.concat(sContext)),
+            partials,
+            indent
+          );
         }
       }
+    }
+
+    if (token.type === 'partialTag') {
+      partialTokens = new Tokens(partials[token.key]);
+      output(token.indent);
+      partialOut = evaluate(partialTokens, stack, partials, token.indent);
+      output(partialOut.replace(/(\r\n|\n)(\s+)$/, function(str, nl, sp) {
+        if (sp === token.indent) return nl;
+        else return str;
+      }));
     }
   });
 
@@ -276,9 +331,9 @@ function evaluate(tokens, context) {
  * Render
  */
 
-function render(template, context) {
+function render(template, context, partials) {
   var tokens = new Tokens(template);
-  return evaluate(tokens, context);
+  return evaluate(tokens, context, partials);
 }
 
 module.exports = {

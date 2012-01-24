@@ -29,14 +29,16 @@ function runSpec(spec) {
     , status;
 
   try {
-    actual = pistachio.render(spec.template, spec.data);
+    actual = pistachio.render(spec.template, spec.data, spec.partials);
   } catch(err) {
     error = err;
   }
 
   if (error) {
     line('[ERROR] ' + title, 0, 'red');
-    line(error.toString(), 1);
+    error.stack.split(/\n/).forEach(function(errorLine) {
+      line(errorLine, 1);
+    });
     stats.error += 1;
     status = 'error';
   } else if (actual !== spec.expected) {

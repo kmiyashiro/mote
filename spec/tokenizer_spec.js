@@ -186,7 +186,7 @@ var specs = {
   'Partial tag': {
     template: '{{> partial }}',
     expected: [
-      { type: 'partialTag', key: 'partial' }
+      { type: 'partialTag', key: 'partial', indent: '' }
     ]
   },
 
@@ -280,7 +280,16 @@ var specs = {
       { type: 'closeTag', key: 'oneline' },
       { type: 'newline', value: '\n' }
     ]
-  }
+  },
+
+  'Preserve leading indentation for partials': {
+    template: '  {{>partial}}\n>',
+    expected: [
+      { type: 'partialTag', key: 'partial', indent: '  ' },
+      { type: 'newline', value: '\n' },
+      { type: 'text', value: '>' }
+    ]
+  },
 }
 
 
