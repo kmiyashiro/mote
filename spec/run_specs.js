@@ -24,9 +24,14 @@ var stats = {
 }
 
 function runSpec(spec) {
-  var error, actual
+  var error, actual, lambda, source
     , title = spec.name + ': ' + spec.desc
     , status;
+
+  if (source = spec.data.lambda) {
+    eval('lambda = ' + source.js);
+    spec.data.lambda = lambda;
+  }
 
   try {
     actual = pistachio.render(spec.template, spec.data, spec.partials);
@@ -59,7 +64,7 @@ function runSpec(spec) {
 var status;
 for (var i = 0; i < specs.length; i++) {
   status = runSpec(specs[i]);
-  if (!(status === 'pass')) break;
+  //if (!(status === 'pass')) break;
 }
 
 pass = (stats.pass + ' passed').green;

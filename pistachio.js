@@ -236,7 +236,7 @@ function evaluate(tokens, context, partials, indent) {
   }
 
   tokens.each(function(token, index) {
-    var s, begin, sContext, i, len, renderSection, partialTokens, partialOut;
+    var val, begin, sContext, i, len, renderSection, partialTokens, partialOut;
 
     if (sections.length > 0) {
       if (token.type === 'openTag') {
@@ -269,9 +269,15 @@ function evaluate(tokens, context, partials, indent) {
     }
 
     if (token.type === 'tag') {
-      s = stringify(lookup(stack, token.key));
-      s = token.escape ? escapeHTML(s) : s;
-      output(s);
+      val = lookup(stack, token.key);
+      if (typeof val === 'function') {
+        val = val();
+        val = evaluate(new Tokens(stringify(val)), stack, partials, indent);
+      } else {
+        val = stringify(lookup(stack, token.key));
+      }
+      val = token.escape ? escapeHTML(val) : val;
+      output(val);
     }
 
     if (token.type === 'openTag') {
