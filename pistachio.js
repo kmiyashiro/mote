@@ -1,348 +1,421 @@
-/**
- * Utilities
- */
+var Pistachio = (typeof module !== "undefined" && module.exports) || {};
 
-var isArray = Array.isArray || function(obj) {
-  return Object.prototype.toString.call(obj) == '[object Array]';
-};
+;(function(exports) {
 
-var isNumber = function(obj) {
-  return Object.prototype.toString.call(obj) == '[object Number]';
-};
+  exports.parse = parse;
+  exports.render = render;
 
-var isString = function(obj) {
-  return Object.prototype.toString.call(obj) == '[object String]';
-};
+  /**
+   * Scanner
+   */
 
-/**
- * Tokens
- */
-
-function Tokens(template) {
-  this.tokens = [];
-  if (!template) return;
-  template = this.stripStandaloneTags(template);
-  this.tokenize(template);
-}
-
-Tokens.prototype.RE = {
-  newline: /(\r\n|\n)/g,
-  tag: /\{\{(!|\{|&|#|\/|\^|>)?\s*(\S[\s\S]*?)\s*\}?\}\}/gm,
-  line: /(?:.*(\r\n|\n)?)/g,
-  standalone: /^(\s*)(\{\{(#|\/|\^|!|>)[^\{]*\}\})(\s*)$/,
-  multilineCommentStart: /^\s*\{\{!\s*$/,
-  multilineCommentEnd: /^\s*\}\}\s*$/,
-};
-
-Tokens.prototype.stripStandaloneTags = function(template) {
-  var i, len, line
-    , inComment = false
-    , out = []
-    , lines = template.match(this.RE.line);
-
-  for (i = 0, len = lines.length; i < len; i++) {
-    line = lines[i];
-
-    if (this.RE.multilineCommentStart.test(line)) {
-      inComment = true;
-      continue;
-    }
-
-    if (inComment) {
-      if (this.RE.multilineCommentEnd.test(line)) inComment = false;
-      continue;
-    }
-
-    out.push(line.replace(this.RE.standalone, function(m0, m1, m2, m3, m4) {
-      if (m3 === '>') return m1 + m2;
-      return m2;
-    }));
+  function Scanner(str) {
+    this.raw = str;
+    this.str = str;
+    this.pos = 0;
   }
 
-  return out.join('');
-};
+  Scanner.prototype = {
 
-Tokens.prototype.tokenize = function(template) {
-  var m, i = 0;
+    eos: function() {
+      return !this.str;
+    },
 
-  if (!template) return;
+    startOfLine: function() {
+      return (!this.pos || (this.raw.charAt(this.pos-1) === '\n'));
+    },
 
-  while (m = this.RE.tag.exec(template)) {
-    if (i < m.index) this.tokenizeText(template.substring(i, m.index));
-    this.tokenizeTag(m[1], m[2]);
-    i = this.RE.tag.lastIndex;
-  }
+    scan: function(re) {
+      var match = this.str.match(re);
+      if (!match || (match.index > 0)) return null;
+      this.str = this.str.substring(match[0].length);
+      this.pos += match[0].length;
+      return match[0];
+    },
 
-  if (i < template.length) this.tokenizeText(template.substring(i));
-};
+    scanUntil: function(re) {
+      var match
+        , pos = this.str.search(re);
 
-Tokens.prototype.tokenizeTag = function(type, key) {
-  var escape = true;
-  if (type === '!') this.commentToken();
-  else if (type === '#') this.sectionTagToken(key, 'openTag');
-  else if (type === '/') this.sectionTagToken(key, 'closeTag');
-  else if (type === '^') this.sectionTagToken(key, 'invertTag');
-  else if (type === '>') this.partialTagToken(key);
-  else if (type === '{') this.tagToken(key, false);
-  else if (type === '&') this.tagToken(key, false);
-  else this.tagToken(key, true);
-};
-
-Tokens.prototype.tokenizeText = function(str) {
-  var m, i = 0;
-
-  while (m = this.RE.newline.exec(str)) {
-    if (i < m.index) this.textToken(str.substring(i, m.index));
-    this.newlineToken(m[1]);
-    i = this.RE.newline.lastIndex;
-  }
-
-  if (i < str.length) this.textToken(str.substring(i));
-};
-
-Tokens.prototype.tagToken = function(key, escape) {
-  this.tokens.push({
-    type: 'tag',
-    key: key,
-    escape: escape
-  });
-};
-
-Tokens.prototype.sectionTagToken = function(key, type) {
-  this.tokens.push({
-    type: type,
-    key: key
-  });
-};
-
-Tokens.prototype.partialTagToken = function(key, type) {
-  var prev1, prev2, indent = '';
-
-  if (this.tokens.length) {
-    prev1 = this.tokens.pop();
-    if ((prev1.type === 'text') && /^\s+$/.test(prev1.value)) {
-      if (this.tokens.length) {
-        prev2 = this.tokens.pop();
-        if (prev2.type === 'newline') {
-          indent = prev1.value;
-          this.tokens.push(prev2);
-        } else {
-          this.tokens.push(prev2);
-          this.tokens.push(prev1);
-        }
-      } else {
-        indent = prev1.value;
+      switch (pos) {
+        case -1 :
+          match = this.str;
+          this.pos += this.str;
+          this.str = ''
+          break;
+        case 0  :
+          match = null;
+          break;
+        default :
+          match = this.str.substring(0, pos);
+          this.str = this.str.substring(pos);
+          this.pos += pos;
       }
-    } else {
-      this.tokens.push(prev1);
-    }
+      return match;
+    },
+
   }
 
-  this.tokens.push({
-    type: 'partialTag',
-    key: key,
-    indent: indent
-  });
-};
+  /**
+   * Parser
+   */
 
-Tokens.prototype.commentToken = function() {
-  this.tokens.push({
-    type: 'comment'
-  });
-};
+  var parseCache = {};
 
-Tokens.prototype.textToken = function(value) {
-  this.tokens.push({
-    type: 'text',
-    value: value
-  });
-};
-
-Tokens.prototype.newlineToken = function(value) {
-  this.tokens.push({
-    type: 'newline',
-    value: value
-  });
-};
-
-Tokens.prototype.each = function(cb) {
-  var i = 0, len = this.tokens.length;
-  for (;i < len; i++) {
-    cb(this.tokens[i], i);
-  }
-};
-
-Tokens.prototype.push = function(token) {
-  this.tokens.push(token);
-};
-
-/**
- * HTML Escaping
- */
-
-var escape = {
-  chars: /[&"<>]/g,
-  map: { '&': '&amp;', '"': '&quot;', '<': '&lt;', '>': '&gt;' }
-}
-
-function escapeHTML(str) {
-  return str.replace(escape.chars, function(char) {
-    return escape.map[char];
-  });
-}
-
-/**
- * Evaluate
- */
-
-function stringify(obj) {
-  if (!obj) return '';
-  return obj.toString();
-}
-
-function get(obj, key) {
-  var value = obj, keys, i, len;
-
-  if (key === '.') return obj;
-
-  keys = key.split('.');
-
-  for (i = 0, len = keys.length; i < len; i++) {
-    if (value) value = value[keys[i]];
+  function parse(template, options) {
+    options = options || {};
+    var p = new Parser();
+    var t = template + options.indent + options.otag + options.ctag;
+    if (parseCache[t]) return parseCache[t];
+    parseCache[t] = p.parse(template, options);
+    return parseCache[t];
   }
 
-  return value;
-}
-
-function lookup(stack, key) {
-  var i = stack.length - 1, value;
-  for (; i >= 0; i--) {
-    if (value = get(stack[i], key)) return value;
-  }
-  return undefined;
-}
-
-function evaluate(tokens, context, partials, indent) {
-  var out = []
-    , stack = isArray(context) ? context : [context]
-    , sections = []
-    , sectionTokens
-    , invert = false
-    , indent = indent || '';
-
-  function output(obj) {
-    if (isArray(obj)) out.concat(obj);
-    else out.push(obj);
+  function Parser() {
+    this.tokens = [];
+    this.tokenCollector = this.tokens;
+    this.sections = [];
+    this.otag = '{{';
+    this.ctag = '}}';
+    this.compileRegexen();
   }
 
-  tokens.each(function(token, index) {
-    var val, begin, sContext, i, len, renderSection, partialTokens, partialOut;
+  Parser.prototype = {
 
-    if (sections.length > 0) {
-      if (token.type === 'openTag') {
-        sections.push(token.key);
-        sectionTokens.push(token);
-        return;
-      } else if (token.type === 'invertTag') {
-        sections.push(token.key);
-        sectionTokens.push(token);
-        return;
-      } else if (token.type ==='closeTag') {
-        if (sections.length > 1) {
-          sections.pop();
-          sectionTokens.push(token);
-          return;
-        }
-      } else {
-        sectionTokens.push(token);
-        return;
+    compileRegexen: function() {
+      this.re.opentag = new RegExp('(?:([ \\t]*))?' + RE(this.otag));
+      this.re.closetag = new RegExp('[\\}!=]?' + RE(this.ctag));
+    },
+
+    re: {
+      newline: /\r?\n/,
+      whitespace: /[ \t]*/,
+      trailing: /[ \t]*(?:\r?\n|$)/,
+      tagtype: /\{|&|#|\^|\/|>|=|!/,
+      allowed: /[\w\$\.]+/,
+      linebeginnings: /(^|\n)([^\r\n])/g
+    },
+
+    standalone: function(type) {
+      return type && type !== '{' && type !== '&';
+    },
+
+    addIndentationTo: function(str, indent) {
+      return str.replace(this.re.linebeginnings, '$1' + indent + '$2');
+    },
+
+    parse: function(str, options) {
+      options = options || {};
+      if (options.indent) {
+        str = this.addIndentationTo(str, options.indent)
       }
-    }
-
-    if (token.type === 'text') {
-      output(token.value);
-    }
-
-    if (token.type === 'newline') {
-      output(token.value);
-      output(indent);
-    }
-
-    if (token.type === 'tag') {
-      val = lookup(stack, token.key);
-      if (typeof val === 'function') {
-        val = val();
-        val = evaluate(new Tokens(stringify(val)), stack, partials, indent);
-      } else {
-        val = stringify(lookup(stack, token.key));
+      if (options.otag) {
+        this.otag = options.otag;
+        this.ctag = options.ctag;
+        this.compileRegexen();
       }
-      val = token.escape ? escapeHTML(val) : val;
-      output(val);
-    }
+      this.scanner = new Scanner(str);
+      while (!this.scanner.eos()) this.scanTags();
+      return this.tokens;
+    },
 
-    if (token.type === 'openTag') {
-      sectionTokens = new Tokens();
-      sections.push(token.key);
-      invert = false;
-    }
+    scanTags: function() {
+      var otag, padding, type, content, startOfLine, start, end
+        , standAlone = false;
 
-    if (token.type === 'invertTag') {
-      sectionTokens = new Tokens();
-      sections.push(token.key);
-      invert = true;
-    }
+      this.scanText();
 
-    if (token.type === 'closeTag') {
-      sections.pop();
-      sContext = lookup(stack, token.key);
-      if (isArray(sContext) && (sContext.length === 0)) sContext = false;
-      renderSection = invert ? !sContext : sContext;
-      if (renderSection) {
-        if (isArray(sContext)) {
-          for (i = 0, len = sContext.length; i < len; i++) {
-            output(evaluate(
-              sectionTokens,
-              stack.concat(sContext[i]),
-              partials,
-              indent
-            ));
+      startOfLine = this.scanner.startOfLine();
+      start = this.scanner.pos;
+
+      // Match the opening tag.
+      if (!(otag = this.scanner.scan(this.re.opentag))) return;
+
+      // Handle leading whitespace
+      padding = this.re.whitespace.exec(otag);
+      padding = padding && padding[0];
+      start += padding.length;
+
+      // Get the tag's type.
+      type = this.scanner.scan(this.re.tagtype);
+      type = type && type[0];
+
+      // Skip whitespace.
+      this.scanner.scan(this.re.whitespace);
+
+      // Get the tag's inner content.
+      if (type === '!' || type === '=') {
+        content = this.scanner.scanUntil(this.re.closetag);
+      } else {
+        content = this.scanner.scan(this.re.allowed);
+      }
+
+      // Skip whitespace again.
+      this.scanner.scan(this.re.whitespace);
+
+      // Closing tag.
+      if (!this.scanner.scan(this.re.closetag)) {
+        throw new Error('Unclosed tag');
+      }
+
+      // Strip leading and trailing whitespace if necessary.
+      if (startOfLine && this.standalone(type) &&
+          (this.scanner.scan(this.re.trailing) !== null)) {
+          standAlone = true;
+      }
+
+      if (!standAlone) {
+        this.addText(padding);
+        padding = '';
+      }
+
+      end = this.scanner.pos;
+
+      this.addTag(type, content, padding, start, end);
+    },
+
+    scanText: function(str) {
+      var text = this.scanner.scanUntil(this.re.opentag);
+      this.addText(text);
+    },
+
+    addText: function(text) {
+      this.text(text);
+    },
+
+    addTag: function(type, content, padding, start, end) {
+      switch (type) {
+        case '=':
+          this.setDelimiters(content);
+          break;
+        case '!':
+          break;
+        case '#':
+          this.openSection(content, {invert: false, start: end});
+          break;
+        case '^':
+          this.openSection(content, {invert: true, start: end});
+          break;
+        case '/':
+          this.closeSection(content, {end: start});
+          break;
+        case '>':
+          this.partial(content, padding);
+          break;
+        case '{':
+        case '&':
+          this.variable(content, {escape: false});
+          break;
+        default :
+          this.variable(content, {escape: true});
+          break;
+      }
+    },
+
+    setDelimiters: function(content) {
+      var tags = content.split(/\s+/);
+      this.otag = tags[0];
+      this.ctag = tags[1];
+      this.compileRegexen();
+    },
+
+    openSection: function(content, options) {
+      var section = {
+        type: 'section',
+        inverted: options.invert,
+        key: content,
+        tokens: [],
+        raw: options.start
+      };
+      this.tokenCollector.push(section);
+      this.sections.push(section);
+      this.tokenCollector = section.tokens;
+    },
+
+    closeSection: function(content, options) {
+      var section, last;
+
+      if (this.sections.length === 0) {
+        throw new Error('Unopened section: ' + content);
+      }
+
+      section = this.sections.pop();
+      if (section.key !== content) {
+        throw new Error('Unclosed section: ' + section.key);
+      }
+
+      section.raw = this.scanner.raw.substring(section.raw, options.end);
+      section.otag = this.otag;
+      section.ctag = this.ctag;
+
+      last = this.sections.length - 1;
+
+      this.tokenCollector =
+        this.sections.length ? this.sections[last].tokens : this.tokens;
+    },
+
+    partial: function(content, padding) {
+      this.tokenCollector.push({
+        type: 'partial',
+        key: content,
+        indent: padding
+      });
+    },
+
+    variable: function(content, options) {
+      this.tokenCollector.push({
+        type: 'variable',
+        key: content,
+        escape: options.escape
+      });
+    },
+
+    text: function(text) {
+      var last = this.tokenCollector.length - 1;
+      if (!text) return;
+      if ((last >= 0) && (this.tokenCollector[last].type === 'text')) {
+        this.tokenCollector[last].value += text;
+      } else {
+        this.tokenCollector.push({
+          type: 'text',
+          value: text
+        });
+      }
+    },
+
+  }
+
+  /**
+   * render
+   */
+
+  function evaluate(tokens, data, partials) {
+    var token, s, value, context, j, jlen
+      , buffer = ''
+      , stack = isArray(data) ? data : [data]
+      , i = 0
+      , len = tokens.length
+
+    for (; i < len; i++) {
+      token = tokens[i];
+      switch (token.type) {
+        case 'text':
+          buffer += token.value;
+          break;
+        case 'variable':
+          value = lookup(stack, token.key);
+          if (typeof value === 'function') {
+            s = render(stringify(value.call(data)), stack, partials);
+          } else {
+            s = stringify(value);
           }
-        }
-        else {
-          output(evaluate(
-            sectionTokens,
-            stack.concat(sContext)),
+          buffer += token.escape ? escapeHTML(s) : s;
+          break;
+        case 'section':
+          context = lookup(stack, token.key);
+          if (typeof context === 'function') {
+            buffer += render(
+              stringify(context.call(data, token.raw)),
+              stack,
+              partials,
+              {otag: token.otag, ctag: token.ctag}
+            );
+            break;
+          }
+          shouldRender = isArray(context) ? !!context.length : !!context;
+          if ((shouldRender && !token.inverted) ||
+              (!shouldRender && token.inverted)) {
+            if (isArray(context) && !token.inverted) {
+              for (j = 0, jlen = context.length; j < jlen; j++) {
+                buffer += evaluate(
+                  token.tokens,
+                  stack.concat(context[j]),
+                  partials
+                );
+              }
+            } else {
+              buffer += evaluate(
+                token.tokens,
+                stack.concat(context),
+                partials
+              );
+            }
+          }
+          break;
+        case 'partial':
+          buffer += render(
+            partials[token.key],
+            data,
             partials,
-            indent
+            {indent: token.indent}
           );
-        }
+          break;
+
       }
     }
 
-    if (token.type === 'partialTag') {
-      partialTokens = new Tokens(partials[token.key]);
-      output(token.indent);
-      partialOut = evaluate(partialTokens, stack, partials, token.indent);
-      output(partialOut.replace(/(\r\n|\n)(\s+)$/, function(str, nl, sp) {
-        if (sp === token.indent) return nl;
-        else return str;
-      }));
+    return buffer;
+  }
+
+  function render(template, data, partials, options) {
+    return evaluate(parse(template, options), data, partials);
+  };
+
+  /**
+   * Utilities
+   */
+
+  function getValue(obj, key) {
+    var keys, i, len
+      , value = obj;
+
+    if (key === '.') return value;
+
+    keys = key.split('.');
+    for (i = 0, len = keys.length; i < len; i++) {
+      if (!value) return undefined;
+      value = value[keys[i]];
     }
-  });
 
-  return out.join('');
-}
+    return value;
+  }
 
-/**
- * Render
- */
+  function lookup(stack, key) {
+    var value
+      , i = stack.length - 1;
 
-function render(template, context, partials) {
-  var tokens = new Tokens(template);
-  return evaluate(tokens, context, partials);
-}
+    for (; i >= 0; i--) {
+      value = getValue(stack[i], key);
+      if (value) return value;
+    }
+    return undefined;
+  }
 
-module.exports = {
-  render: render,
-  Tokens: Tokens
-}
+  function stringify(obj) {
+    return obj ? obj.toString() : '';
+  }
+
+  var isArray = Array.isArray || function(obj) {
+    return Object.prototype.toString.call(obj) == '[object Array]';
+  };
+
+  var escapeChars = {
+    '&': '&amp;',
+    '"': '&quot;',
+    '<': '&lt;',
+    '>': '&gt;'
+  }
+
+  function escapeHTML(str) {
+    return str.replace(/[&"<>]/g, function(str) {
+      return escapeChars[str];
+    });
+  }
+
+  // Credit to Simon Willison and Colin Snover:
+  // http://simonwillison.net/2006/Jan/20/escape/
+  function RE(str) {
+    return str.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
+  }
+
+})(Pistachio);

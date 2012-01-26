@@ -2,10 +2,13 @@ var pistachio = require('../pistachio.js');
 var colors = require('colors');
 var fs = require('fs');
 
-var spec = process.argv[2];
 
-var specs = fs.readFileSync(__dirname + '/specs/' + spec + '.json', 'utf8');
-specs = JSON.parse(specs).tests;
+
+function loadSpecsFromFile(filename) {
+  var specs = fs.readFileSync(__dirname + '/specs/' + filename + '.json', 'utf8');
+  return JSON.parse(specs).tests;
+}
+
 
 function line(str, indentLevel, color) {
   var indent = ''
@@ -61,14 +64,38 @@ function runSpec(spec) {
 }
 
 // Run the tests
-var status;
-for (var i = 0; i < specs.length; i++) {
-  status = runSpec(specs[i]);
-  //if (!(status === 'pass')) break;
+function runSpecs(specs) {
+  for (var i = 0; i < specs.length; i++) {
+    runSpec(specs[i]);
+  }
 }
 
-pass = (stats.pass + ' passed').green;
-fail = (stats.fail + ' failed').red;
-err = (stats.error + ' errors').yellow;
-console.log();
-console.log(pass + ', ' + fail + ', ' + err);
+function printStats() {
+  pass = (stats.pass + ' passed').green;
+  fail = (stats.fail + ' failed').red;
+  err = (stats.error + ' errors').yellow;
+  console.log();
+  console.log(pass + ', ' + fail + ', ' + err);
+}
+
+
+var spec = process.argv[2];
+
+if (spec === 'all') {
+  ['interpolation',
+    'sections',
+    'comments',
+    'inverted',
+    'delimiters',
+    'partials',
+    '~lambdas'].forEach(function(filename) {
+      console.log(filename.white);
+      specs = loadSpecsFromFile(filename);
+      runSpecs(specs);
+    });
+} else {
+  specs = loadSpecsFromFile(spec);
+  runSpecs(specs);
+}
+
+printStats();

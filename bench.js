@@ -1,6 +1,8 @@
 var fs = require('fs');
 var mustache = require('mustache');
+var mustache5 = require('./mustache5');
 var pistachio = require('./pistachio');
+var hb = require('handlebars');
 
 var interpolation = fs.readFileSync(__dirname + '/spec/specs/interpolation.json', 'utf8');
 var comments = fs.readFileSync(__dirname + '/spec/specs/comments.json', 'utf8');
@@ -18,7 +20,7 @@ mustache.render = mustache.to_html;
 
 function bench(name, engine) {
   var start = Date.now();
-  var times = 1000;
+  var times = 10000;
   var len;
   var i;
 
@@ -39,6 +41,73 @@ function bench(name, engine) {
   console.log('%s completed in %dms.', name, Date.now() - start);
 }
 
-bench('mustache', mustache);
-bench('pistachio', pistachio);
+//bench('mustache', mustache);
+//bench('mustache5', mustache5);
+//bench('pistachio', pistachio);
 
+
+var complexMu =
+'<h1>{{header}}</h1>\n' +
+'{{#list}}' +
+  '<ul>' +
+  '{{#item}}' +
+    '{{#current}}' +
+      '<li><strong>{{name}}</strong></li>' +
+    '{{/current}}' +
+    '{{#link}}' +
+      '<li><a href="{{url}}">{{name}}</a></li>' +
+    '{{/link}}' +
+  '{{/item}}' +
+  '</ul>' +
+'{{/list}}' +
+'{{#empty}}' +
+  '<p>The list is empty.</p>' +
+'{{/empty}}';
+
+var complex = {
+  header: function() {
+    return "Colors";
+  },
+  item: [
+      {name: "red", current: true, url: "#Red"},
+      {name: "green", current: false, url: "#Green"},
+      {name: "blue", current: false, url: "#Blue"}
+  ],
+  link: function() {
+    return this["current"] !== true;
+  },
+  list: function() {
+    return this.item.length !== 0;
+  },
+  empty: function() {
+    return this.item.length === 0;
+  }
+}
+
+//var start = Date.now()
+//for (i = 0; i < 10000; i++) {
+  //pistachio.render(complexMu, complex);
+//}
+//console.log('completed in %dms.', Date.now() - start);
+
+//var start = Date.now()
+//for (i = 0; i < 10000; i++) {
+  //mustache.render(complexMu, complex);
+//}
+//console.log('completed in %dms.', Date.now() - start);
+
+var start = Date.now()
+var tmpl = mustache5.compile(complexMu)
+console.log(tmpl.toString());
+for (i = 0; i < 10000; i++) {
+  tmpl(complex);
+}
+console.log('completed in %dms.', Date.now() - start);
+
+var start = Date.now();
+var tmpl = hb.compile(complexMu);
+console.log(tmpl.toString());
+for (i = 0; i < 10000; i++) {
+  tmpl(complex);
+}
+console.log('completed in %dms.', Date.now() - start);
