@@ -64,11 +64,8 @@ var Pistachio = (typeof module !== "undefined" && module.exports) || {};
 
   function parse(template, options) {
     options = options || {};
-    var p = new Parser();
-    var t = template + options.indent + options.otag + options.ctag;
-    if (parseCache[t]) return parseCache[t];
-    parseCache[t] = p.parse(template, options);
-    return parseCache[t];
+    p = new Parser();
+    return p.parse(template, options);
   }
 
   function Parser() {
@@ -357,8 +354,27 @@ var Pistachio = (typeof module !== "undefined" && module.exports) || {};
     return buffer;
   }
 
+  var parseCache = {};
+  var compileCache = {};
+
+  function compile(template, data, partials, options) {
+    var tokens, lookup;
+    options = options || {};
+    lookup = template + options.indent;
+
+    if (!parseCache[lookup]) parseCache[lookup] = parse(template, options);
+    tokens = parseCache[lookup];
+
+    if (!compileCache[lookup]) {
+      compileCache[lookup] = function(data, partials) {
+        return evaluate(tokens, data, partials);
+      }
+    }
+    return compileCache[lookup];
+  }
+
   function render(template, data, partials, options) {
-    return evaluate(parse(template, options), data, partials);
+    return compile(template, data, partials, options)(data, partials);
   };
 
   /**
