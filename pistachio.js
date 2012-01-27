@@ -1,9 +1,104 @@
-var Pistachio = (typeof module !== "undefined" && module.exports) || {};
-
-;(function(exports) {
-
   exports.parse = parse;
   exports.render = render;
+  exports.compile = compile;
+  exports.template = template;
+
+  function compile(tokens, options) {
+    var code = [
+      'var value, variable, partial, i, len, buffer = ""',
+      'stack = isArray(stack) ? stack : [stack];',
+      'partials = partials || {};'
+    ];
+
+    code = code.concat(compileStatements(tokens, options));
+
+    code.push('return buffer;');
+    return new Function('stack, partials, isArray, parse, render, lookup, variableLookup, stringify, escapeHTML', code.join('\n'));
+  }
+
+  function compileStatements(tokens, options) {
+    var i = 0
+      , len = tokens.length
+      , code = [];
+
+    for (; i < len; i++) {
+      code = code.concat(compileToken(tokens[i]));
+    }
+    return code;
+  }
+
+  function compileToken(token, options) {
+    switch (token.type) {
+      case 'text': return compileText(token, options);
+      case 'variable': return compileVariable(token, options);
+      case 'partial': return compilePartial(token, options);
+      case 'section': return compileSection(token, options);
+    }
+  }
+
+  function compileText(token, options) {
+    return ['buffer += ' + JSON.stringify(token.value) + ';'];
+  }
+
+  function compileVariable(token, options) {
+    var code = [
+      'variable = lookup(stack, "' + token.key + '")',
+      'if (typeof variable === "function") {',
+      '  variable = render(parse(stringify(variable.call(stack[0]))), stack, partials)',
+      '}'
+    ]
+
+    if (token.escape) {
+      code.push('buffer += escapeHTML(stringify(variable));');
+    } else {
+      code.push('buffer += stringify(variable);');
+    }
+    return code;
+  }
+
+  function compilePartial(token, options) {
+    var indent = '"' + token.indent + '"';
+    return [
+      'partial = partials["' + token.key + '"];',
+      'if (partial) {',
+      'partial = parse(partial, {indent: ' + indent + '});',
+      'buffer += render(partial, stack, partials);',
+      '}'
+    ];
+  }
+
+  function compileSection(token, options) {
+    var sectionCode = compileStatements(token.tokens, options)
+      , code = [
+      'value = lookup(stack, "' + token.key + '");',
+    ];
+
+    if (token.inverted) {
+      code.push('if (!value || (isArray(value) && value.length === 0)) {');
+      code = code.concat(sectionCode);
+      code.push('}');
+    } else {
+      code.push('if (typeof value === "function") {');
+      code.push('value = parse(stringify(value.call(stack[0], ' +
+                JSON.stringify(token.raw) + '))' +
+                ', {otag: ' + JSON.stringify(token.otag) +
+                ', ctag: ' + JSON.stringify(token.ctag) + '}' +
+                ');');
+      code.push('buffer += render(value, stack, partials)');
+      code.push('} else if (isArray(value)) {');
+      code.push('for (i = 0, len = value.length; i < len; i ++) {');
+      code.push('stack.push(value[i]);');
+      code = code.concat(sectionCode);
+      code.push('stack.pop();');
+      code.push('}');
+      code.push('} else if (value) {');
+      code.push('stack.push(value);');
+      code = code.concat(sectionCode);
+      code.push('stack.pop();');
+      code.push('}');
+    }
+    return code;
+  }
 
   /**
    * Scanner
@@ -357,26 +452,27 @@ var Pistachio = (typeof module !== "undefined" && module.exports) || {};
   var parseCache = {};
   var compileCache = {};
 
-  function compile(template, data, partials, options) {
-    var tokens, lookup;
-    options = options || {};
-    lookup = template + options.indent;
-
-    if (!parseCache[lookup]) parseCache[lookup] = parse(template, options);
-    tokens = parseCache[lookup];
-
-    if (!compileCache[lookup]) {
-      compileCache[lookup] = function(data, partials) {
-        return evaluate(tokens, data, partials);
-      }
-    }
-    return compileCache[lookup];
-  }
-
   function render(template, data, partials, options) {
-    return compile(template, data, partials, options)(data, partials);
+    //var tokens, lookup;
+    //options = options || {};
+    //lookup = template + options.indent;
+    //if (!parseCache[lookup]) parseCache[lookup] = parse(template, options);
+    //tokens = parseCache[lookup];
+    //return evaluate(tokens, data, partials, options)
+    var compiled;
+    if (!compileCache[template]) compileCache[template] = compile(parse(template));
+    compiled = compileCache[template];
+    //console.log(compiled.toString());
+    return compiled(data, partials, isArray, parse, evaluate, lookup, variableLookup, stringify, escapeHTML);
   };
 
+  function template(template, data, partials, options) {
+    var compiled = compile(parse(template));
+    //console.log(compiled.toString());
+    return function(data, partials) {
+      return compiled(data, partials, isArray, parse, evaluate, lookup, variableLookup, stringify, escapeHTML);
+    }
+  };
   /**
    * Utilities
    */
@@ -407,6 +503,12 @@ var Pistachio = (typeof module !== "undefined" && module.exports) || {};
     return undefined;
   }
 
+  function variableLookup(stack, key) {
+    var value = lookup(stack, key);
+    if (typeof value === 'function') return value.call(stack[0]);
+    else return value;
+  }
+
   function stringify(obj) {
     return obj ? obj.toString() : '';
   }
@@ -434,4 +536,3 @@ var Pistachio = (typeof module !== "undefined" && module.exports) || {};
     return str.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
   }
 
-})(Pistachio);

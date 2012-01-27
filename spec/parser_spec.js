@@ -3,14 +3,13 @@ var colors = require('colors');
 
 function l(str) {
   console.log(JSON.stringify(str).yellow);
-  console.log(JSON.stringify(pistachio.parse(str)));
+  console.log(pistachio.compile(pistachio.parse(str)).toString());
   console.log();
 }
 
 l('');
 l('asdf');
 l('asdf\n');
-l('  {{#  asdf  }} \r\n');
 l('asdf\r\nqwer\n');
 l('\nasdf\r\nqwer\n');
 l('    asdf\r\n  qwer\n');
@@ -29,3 +28,4 @@ l('{{#a}}\n{{one}}\n{{#b}}\n{{one}}{{two}}\n{{/b}}\n{{one}}\n{{/a}}');
 l(' | {{#boolean}} {{! Important Whitespace }}\n {{/boolean}} | \n');
 l("#{{#boolean}}\n/\n  {{/boolean}}");
 l("{{= | | =}}<|#lambda|-|/lambda|>");
+l("{{{ somenode }}}");
