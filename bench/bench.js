@@ -2,7 +2,8 @@ var Benchmark = require('benchmark')
   , colors = require('colors')
   , hb = require('./handlebars')
   , mustache = require('./mustache')
-  , mote = require('../mote');
+  , mote = require('../mote')
+  , hogan = require('./hogan');
 
   var tests = {
 
@@ -82,7 +83,7 @@ var Benchmark = require('benchmark')
       ],
       muContext: {
         filter: function(txt) {
-          return 'FOO BAR';
+          return txt.toUpperCase();
         },
         bar: 'bar'
       }
@@ -118,7 +119,7 @@ var Benchmark = require('benchmark')
   }
 
 function bench(name, test) {
-  var p, partial, suite, hbFn, moteFn, muFn, muContext;
+  var p, partial, suite, hbFn, moteFn, muFn, hoganFn, muContext;
 
   hb.partials = {};
   mote.clearCache();
@@ -142,18 +143,22 @@ function bench(name, test) {
   hbFn = hb.compile(test.template)
   moteFn = mote.compile(test.template)
   muFn = mustache.compile(test.template);
+  hoganFn = hogan.compile(test.template);
 
   muContext = (name === 'Filter') ? test.context.muContext : test.context;
 
   console.log(name.white);
+  console.log(hoganFn.render(muContext, test.partials).yellow);
+  console.log(muFn(muContext, test.partials).yellow);
   console.log(hbFn(test.context).yellow);
   console.log(moteFn(test.context).yellow);
-  console.log(muFn(muContext, test.partials).yellow);
 
-  console.log(hb.disassemble
-
+  console.log(hoganFn.r.toString());
 
   suite
+    .add('hogan', function() {
+      hoganFn.render(muContext, test.partials);
+    })
     .add('mustache', function() {
       muFn(muContext, test.partials);
     })
