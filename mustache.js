@@ -2,7 +2,7 @@
  * mustache.js - Logic-less {{mustache}} templates with JavaScript
  * http://github.com/janl/mustache.js
  */
-var Mustache5 = (typeof module !== "undefined" && module.exports) || {};
+var Mustache = (typeof module !== "undefined" && module.exports) || {};
 
 (function (exports) {
 
@@ -209,7 +209,7 @@ var Mustache5 = (typeof module !== "undefined" && module.exports) || {};
    *   - file     The name of the file the template comes from (displayed in
    *              error messages)
    *   - tags     An array of open and close tags the `template` uses. Defaults
-   *              to the value of Mustache5.tags
+   *              to the value of Mustache.tags
    *   - debug    Set `true` to log the body of the generated function to the
    *              console
    *   - space    Set `true` to preserve whitespace from lines that otherwise
@@ -501,7 +501,7 @@ var Mustache5 = (typeof module !== "undefined" && module.exports) || {};
 
   /**
    * Compiles the given `template` into a reusable function using the given
-   * `options`. In addition to the options accepted by Mustache5.parse,
+   * `options`. In addition to the options accepted by Mustache.parse,
    * recognized options include the following:
    *
    *   - cache    Set `false` to bypass any pre-compiled version of the given
@@ -533,4 +533,4 @@ var Mustache5 = (typeof module !== "undefined" && module.exports) || {};
     return compile(template)(view, partials);
   }
 
-})(Mustache5);
+})(Mustache);

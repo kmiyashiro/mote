@@ -1,105 +1,148 @@
-var fs = require('fs');
-var mustache = require('mustache');
-var mustache5 = require('./mustache5');
-var pistachio = require('./pistachio');
 var hb = require('handlebars');
+var mustache = require('./mustache')
+var mote = require('./mote');
+var data, template;
 
-var interpolation = fs.readFileSync(__dirname + '/spec/specs/interpolation.json', 'utf8');
-var comments = fs.readFileSync(__dirname + '/spec/specs/comments.json', 'utf8');
-var sections = fs.readFileSync(__dirname + '/spec/specs/sections.json', 'utf8');
-var inverted = fs.readFileSync(__dirname + '/spec/specs/inverted.json', 'utf8');
-var partials = fs.readFileSync(__dirname + '/spec/specs/partials.json', 'utf8');
-var delimiters = fs.readFileSync(__dirname + '/spec/specs/delimiters.json', 'utf8');
-
-interpolation = JSON.parse(interpolation).tests;
-comments = JSON.parse(comments).tests;
-sections = JSON.parse(sections).tests;
-inverted = JSON.parse(inverted).tests;
-partials = JSON.parse(partials).tests;
-delimiters = JSON.parse(delimiters).tests;
-
-
-mustache.render = mustache.to_html;
-
-function bench(name, engine) {
+function bench(name, engine, template, data) {
   var start = Date.now();
-  var times = 10000;
-  var len;
-  var i;
+  var fn = engine.compile(template);
+  var times = 1000000;
 
-  while (times--) {
-    for (i = 0, len = interpolation.length; i < len; i++) {
-      engine.render(interpolation[i].template, interpolation[i].data);
-    }
-    for (i = 0, len = comments.length; i < len; i++) {
-      engine.render(comments[i].template, comments[i].data);
-    }
-    for (i = 0, len = sections.length; i < len; i++) {
-      engine.render(sections[i].template, sections[i].data);
-    }
-    for (i = 0, len = inverted.length; i < len; i++) {
-      engine.render(inverted[i].template, inverted[i].data);
-    }
-    for (i = 0, len = partials.length; i < len; i++) {
-      engine.render(partials[i].template, partials[i].data, partials[i].partials);
-    }
+  for (var i = 0; i < times; i++) {
+    fn(data);
   }
-  console.log('%s completed in %dms.', name, Date.now() - start);
+
+  console.log(fn(data));
+
+  console.log(name + ' completed in ' + (Date.now() - start) + 'ms');
 }
 
-//bench('mustache5', mustache5);
-//bench('pistachio', pistachio);
+//template = "{{name}}{{#kids}}{{>recursion}}{{/kids}}";
+//data = {
+  //name: '1',
+  //kids: [
+    //{
+    //name: '1.1',
+    //kids: [
+      //{name: '1.1.1', kids: []}
+    //]
+  //}
+  //]
+//};
+//partials = { recursion: "{{name}}{{#kids}}{{>recursion}}{{/kids}}" }
+
+//mote.compilePartial('recursion', partials.recursion);
+//console.log(mote.loadTemplate('recursion').toString());
+//console.log(mote.render(template, data));
+
+//template = "abcdefg\n{{#hasItems}}<ul>{{#items}}{{#current}}" +
+             //"<li><strong>{{name}}</strong></li>{{/current}}{{^current}}" +
+             //"<li><a href=\"{{url}}\">{{name}}</a></li>{{/current}}"      +
+             //"{{/items}}</ul>{{/hasItems}}{{^hasItems}}<p>The list is empty.</p>{{/hasItems}}";
+//data = {
+  //header: function() {
+    //return "Colors";
+  //},
+  //items: [
+    //{name: "red", current: true, url: "#Red"},
+    //{name: "green", current: false, url: "#Green"},
+    //{name: "blue", current: false, url: "#Blue"}
+  //],
+  //hasItems: function(buffer, fn) {
+    //if (this.items.length !== 0) return fn(buffer).flush();
+  //},
+  //empty: function() {
+    //return this.items.length === 0;
+  //}
+//}
+
+//template = "<h1>{{header}}</h1>{{#hasItems}}{{/hasItems}}";
+//console.log(mote.compile(template)(data));
+
+template = "Hello there!";
+data = {};
+bench('simple:mote', mote, template, data);
+bench('simple:mustache', mustache, template, data);
+bench('simple:handlebars', hb, template, data);
+console.log()
+
+template = "Howdy {{pardner}}!";
+data = {pardner: 'arthur dent'};
+bench('replace:mote', mote, template, data);
+bench('replace:mustache', mustache, template, data);
+bench('replace:handlebars', hb, template, data);
+console.log()
+
+template = "{{#a}}{{b}}{{/a}}";
+data = {a: {b: 'render me'}};
+bench('section:mote', mote, template, data);
+bench('section:mustache', mustache, template, data);
+bench('section:handlebars', hb, template, data);
+console.log()
+
+template = "{{#a}}<{{.}}>{{/a}}";
+data = {a: [1, 2, 3, 4, 5]};
+bench('array:mote', mote, template, data);
+bench('array:mustache', mustache, template, data);
+bench('array:handlebars', hb, template, data);
+console.log()
+
+template = "{{#names}}{{name}}{{/names}}";
+data = { names: [{name: "Moe"}, {name: "Larry"}, {name: "Curly"}, {name: "Shemp"}] };
+bench('object:mote', mote, template, data);
+bench('object:mustache', mustache, template, data);
+bench('object:handlebars', hb, template, data);
+console.log()
 
 
-var complexMu =
-'<h1>{{header}}</h1>\n' +
-'{{#list}}' +
-  '<ul>' +
-  '{{#item}}' +
-    '{{#current}}' +
-      '<li><strong>{{name}}</strong></li>' +
-    '{{/current}}' +
-    '{{#link}}' +
-      '<li><a href="{{url}}">{{name}}</a></li>' +
-    '{{/link}}' +
-  '{{/item}}' +
-  '</ul>' +
-'{{/list}}' +
-'{{#empty}}' +
-  '<p>The list is empty.</p>' +
-'{{/empty}}';
+//template = "<h1>{{header}}</h1>{{#hasItems}}<ul>{{#items}}{{#current}}" +
+             //"<li><strong>{{name}}</strong></li>{{/current}}{{^current}}" +
+             //"<li><a href=\"{{url}}\">{{name}}</a></li>{{/current}}"      +
+             //"{{/items}}</ul>{{/hasItems}}{{^hasItems}}<p>The list is empty.</p>{{/hasItems}}";
 
-var complex = {
-  header: function() {
-    return "Colors";
-  },
-  item: [
-      {name: "red", current: true, url: "#Red"},
-      {name: "green", current: false, url: "#Green"},
-      {name: "blue", current: false, url: "#Blue"}
-  ],
-  link: function() {
-    return this["current"] !== true;
-  },
-  list: function() {
-    return this.item.length !== 0;
-  },
-  empty: function() {
-    return this.item.length === 0;
-  }
-}
+//data ={
+  //header: function() {
+    //return "Colors";
+  //},
+  //items: [
+    //{name: "red", current: true, url: "#Red"},
+    //{name: "green", current: false, url: "#Green"},
+    //{name: "blue", current: false, url: "#Blue"}
+  //],
+  //hasItems: function() {
+    //return this.items.length !== 0;
+  //},
+  //empty: function() {
+    //return this.items.length === 0;
+  //}
+//}
+//bench('object:mote', mote, template, data);
+//bench('object:mustache', mustache, template, data);
+//bench('object:handlebars', hb, template, data);
+//console.log()
 
-var tmpl = pistachio.template(complexMu);
-var start = Date.now()
-for (i = 0; i < 100000; i++) {
-  pistachio.render(complexMu, complex);
-}
-console.log('pistachio completed in %dms.', Date.now() - start);
+//hb.compile = function(string, options) {
+  //options = options || {};
 
-var tmpl = hb.compile(complexMu);
-var start = Date.now()
-for (i = 0; i < 100000; i++) {
-  tmpl(complex);
-}
-console.log('hb completed in %dms.', Date.now() - start);
+  //var compiled;
+  //function compile() {
+    //var ast = hb.parse(string);
+    //var environment = new hb.Compiler().compile(ast, options);
+    //var templateSpec = new hb.JavaScriptCompiler().compile(environment, options, undefined, true);
+    //console.log(templateSpec.toString());
+    //return hb.template(templateSpec);
+  //}
 
+  //compile();
+
+  //// Template is only compiled on first use and cached after that point.
+  //return function(context, options) {
+    //if (!compiled) {
+      //compiled = compile();
+    //}
+    //return compiled.call(this, context, options);
+  //};
+//};
+
+//hb.compile(template);
+//mote.compile(template);

@@ -1,4 +1,4 @@
-var pistachio = require('../pistachio.js');
+var pistachio = require('../mote.js');
 var colors = require('colors');
 var fs = require('fs');
 
@@ -37,7 +37,12 @@ function runSpec(spec) {
   }
 
   try {
-    actual = pistachio.render(spec.template, spec.data, spec.partials);
+    pistachio.clearCache();
+    for (var name in spec.partials) {
+      pistachio.compilePartial(name, spec.partials[name]);
+    }
+
+    actual = pistachio.render(spec.template, spec.data);
   } catch(err) {
     error = err;
   }
@@ -66,7 +71,7 @@ function runSpec(spec) {
 // Run the tests
 function runSpecs(specs) {
   for (var i = 0; i < specs.length; i++) {
-    runSpec(specs[i]);
+    if (runSpec(specs[i]) === 'fail') break;
   }
 }
 
