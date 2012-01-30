@@ -332,14 +332,15 @@ Compiler.prototype.compile = function(template) {
   var tokens = parse(template);
 
   this.source =
-      'function template(buffer, indent) {'
+      'function template(buffer, context) {'
     + '\n  return buffer'
     + this.compileTokens(tokens)
-    + '\n    .flush();\n}'
+    + '\n    .flush();'
+    + '\n}'
     + this.compileSections()
-    + '\nreturn template(buffer, indent);';
+    + '\nreturn template(buffer, context);';
 
-  return new Function('buffer, indent', this.source);
+  return new Function('buffer, context', this.source);
 };
 
 Compiler.prototype.compileTokens = function(tokens) {
@@ -356,10 +357,11 @@ Compiler.prototype.compileSections = function() {
     , out = '';
 
   for (id in this.sections) {
-    out += '\nfunction section' + id + '(buffer) {'
+    out += '\nfunction section' + id + '(buffer, context) {'
          + '\n  return buffer'
          + this.sections[id]
-         + ';\n}';
+         + '\n    .flush();'
+         + '\n}';
   }
   return out;
 };
@@ -373,43 +375,56 @@ Compiler.prototype.compile_text = function(token) {
 };
 
 Compiler.prototype.compile_sol = function(token) {
-  return '\n    .write(indent)';
+  return '\n    .sol()';
 };
 
 Compiler.prototype.compile_variable = function(token) {
   return '\n    .variable('
-    + token.key
+    + 'context.lookup(' + token.key + ')'
+    + ', context'
     + (token.escape ? ', true' : ', false')
     + ')';
 };
 
 Compiler.prototype.compile_partial = function(token) {
-  return '\n    .partial(' + token.key + ', ' + e(token.indent) + ')';
+  return '\n    .partial(' + token.key
+    + ', context'
+    + ', {indent: ' + e(token.indent) + '}'
+    + ')';
 };
 
 Compiler.prototype.compile_section = function(token) {
   var index = this.index++;
   this.sections[index] = this.compileTokens(token.tokens);
-  return '\n    .section(' + token.key + ', section' + index + ')';
+  return '\n    .section(context.lookup(' + token.key + ')'
+    + ', context'
+    + ', section' + index + ')';
 };
 
 Compiler.prototype.compile_invertedSection = function(token) {
   var index = this.index++;
   this.sections[index] = this.compileTokens(token.tokens);
-  return '\n    .invertedSection(' + token.key + ', section' + index + ')';
+  return '\n    .invertedSection(context.lookup(' + token.key + ')'
+    + ', context'
+    + ', section' + index + ')';
 };
 
 /**
  * Buffer
  */
 
-function Buffer(context) {
+function Buffer(options) {
   this.out = '';
-  this.context = new Context(context);
+  this.indent = options && options.indent;
 }
 
 Buffer.prototype.flush = function() {
   return this.out;
+};
+
+Buffer.prototype.sol = function() {
+  if (this.indent) this.out += this.indent;
+  return this;
 };
 
 Buffer.prototype.write = function(str) {
@@ -417,43 +432,37 @@ Buffer.prototype.write = function(str) {
   return this;
 };
 
-Buffer.prototype.variable = function(key, escape) {
-  var value = this.context.lookup(key);
+Buffer.prototype.variable = function(value, context, escape) {
   if (typeof value === 'function') {
-    value = value.call(this.context.root);
+    value = value.call(context.root);
   }
   this.out += escape ? escapeHTML(stringify(value)) : stringify(value);
   return this;
 };
 
-Buffer.prototype.partial = function(key, indent) {
-  var partial = loadTemplate(key);
-  if (partial) partial(this, indent);
+Buffer.prototype.partial = function(value, context, options) {
+  var partial = loadTemplate(value);
+  if (partial) this.out += partial(context, options);
   return this;
 };
 
-Buffer.prototype.section = function(key, fn) {
-  var value = this.context.lookup(key);
-
+Buffer.prototype.section = function(value, context, fn) {
   if (typeof value === 'function') {
-    this.out += value.call(this.context.root, this, fn);
+    this.out += value.call(context.root, new Buffer(), context, fn);
   } else if (isArray(value)) {
     for (var i = 0, len = value.length; i < len; i++) {
-      this.context.push(value[i]);
-      fn(this);
-      this.context.pop();
+      this.out += fn(new Buffer(), context.push(value[i]));
     }
   } else if (value) {
-    this.context.push(value);
-    fn(this);
-    this.context.pop();
+    this.out += fn(new Buffer(), context.push(value));
   }
   return this;
 };
 
-Buffer.prototype.invertedSection = function(key, fn) {
-  var value = this.context.lookup(key);
-  if (!value || (isArray(value) && value.length === 0)) fn(this)
+Buffer.prototype.invertedSection = function(value, context, fn) {
+  if (!value || (isArray(value) && value.length === 0)) {
+    this.out += fn(new Buffer(), context);
+  }
   return this;
 };
 
@@ -461,19 +470,31 @@ Buffer.prototype.invertedSection = function(key, fn) {
  * Context
  */
 
-function Context(obj) {
-  this.root = obj;
-  this.stack = [obj]
+function Context(obj, tail, root) {
+  this.head = obj;
+  this.tail = tail;
+  this.root = root || obj;
 }
 
+Context.wrap = function(obj) {
+  if (obj instanceof Context) return obj;
+  else return new Context(obj);
+};
+
+Context.prototype.push = function(obj) {
+  return new Context(obj, this, this.root);
+};
+
 Context.prototype.lookup = function(key) {
-  var i, value, getter;
+  var i, value, getter
+    , node = this;
 
   getter = isArray(key) ? 'getPath' : 'get';
 
-  for (i = this.stack.length - 1; i >= 0; i--) {
-    value = this[getter](this.stack[i], key);
+  while (node) {
+    value = this[getter](node.head, key);
     if (value) return value;
+    node = node.tail;
   }
   return undefined;
 }
@@ -493,14 +514,6 @@ Context.prototype.getPath = function(obj, key) {
   return value;
 }
 
-Context.prototype.push = function(obj) {
-  this.stack.push(obj);
-};
-
-Context.prototype.pop = function(obj) {
-  this.stack.pop();
-};
-
 /**
  * mote
  */
@@ -516,22 +529,21 @@ function render(template, data) {
   var c = new Compiler();
   var t = new Parser().parse(template)
   var fn = c.compile(template);
-  return fn(new Buffer(data));
+  return fn(new Buffer(), Context.wrap(data));
 }
 exports.render = render;
 
 function compile(template) {
   var c = new Compiler();
   var fn = c.compile(template);
-  return function(view) {
-    return fn(new Buffer(view));
+  return function(view, options) {
+    return fn(new Buffer(options), Context.wrap(view));
   };
 }
 exports.compile = compile;
 
 function compilePartial(name, template) {
-  var c = new Compiler();
-  cache[name] = c.compile(template);
+  cache[name] = compile(template);
   return cache[name];
 }
 exports.compilePartial = compilePartial;

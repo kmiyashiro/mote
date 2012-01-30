@@ -1,4 +1,4 @@
-var pistachio = require('../mote.js');
+var mote = require('../mote.js');
 var colors = require('colors');
 var fs = require('fs');
 
@@ -37,12 +37,12 @@ function runSpec(spec) {
   }
 
   try {
-    pistachio.clearCache();
+    mote.clearCache();
     for (var name in spec.partials) {
-      pistachio.compilePartial(name, spec.partials[name]);
+      mote.compilePartial(name, spec.partials[name]);
     }
 
-    actual = pistachio.render(spec.template, spec.data);
+    actual = mote.compile(spec.template)(spec.data);
   } catch(err) {
     error = err;
   }
@@ -92,8 +92,7 @@ if (spec === 'all') {
     'comments',
     'inverted',
     'delimiters',
-    'partials',
-    '~lambdas'].forEach(function(filename) {
+    'partials'].forEach(function(filename) {
       console.log(filename.white);
       specs = loadSpecsFromFile(filename);
       runSpecs(specs);
