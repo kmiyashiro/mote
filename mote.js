@@ -437,10 +437,7 @@ Buffer.prototype.section = function(key, fn) {
 
   if (typeof value === 'function') {
     this.out += value.call(this.context.root, this, fn);
-    return this;
-  }
-
-  if (isArray(value)) {
+  } else if (isArray(value)) {
     for (var i = 0, len = value.length; i < len; i++) {
       this.context.push(value[i]);
       fn(this);
