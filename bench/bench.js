@@ -85,7 +85,7 @@ var Benchmark = require('benchmark')
         filter: function(txt) {
           return txt.toUpperCase();
         },
-        bar: 'bar'
+        BAR: 'BAR'
       }
     },
 
@@ -119,7 +119,7 @@ var Benchmark = require('benchmark')
   }
 
 function bench(name, test) {
-  var p, partial, suite, hbFn, moteFn, muFn, hoganFn, muContext;
+  var p, partial, suite, hbFn, moteFn, moteFn2, muFn, hoganFn, muContext;
 
   hb.partials = {};
   mote.clearCache();
@@ -145,23 +145,23 @@ function bench(name, test) {
   muFn = mustache.compile(test.template);
   hoganFn = hogan.compile(test.template);
 
-  muContext = (name === 'Filter') ? test.context.muContext : test.context;
+  muContext = (name === 'Filter') ? test.muContext : test.context;
 
   console.log(name.white);
   console.log(hoganFn.render(muContext, test.partials).yellow);
-  console.log(muFn(muContext, test.partials).yellow);
+  //console.log(muFn(muContext, test.partials).yellow);
   console.log(hbFn(test.context).yellow);
   console.log(moteFn(test.context).yellow);
 
-  console.log(hoganFn.r.toString());
+  //console.log(hoganFn.r.toString());
 
   suite
     .add('hogan', function() {
       hoganFn.render(muContext, test.partials);
     })
-    .add('mustache', function() {
-      muFn(muContext, test.partials);
-    })
+    //.add('mustache', function() {
+      //muFn(muContext, test.partials);
+    //})
     .add('handlebars', function() {
       hbFn(test.context);
     })
@@ -177,12 +177,12 @@ function bench(name, test) {
     .run();
 }
 
-bench('String', tests.string);
-bench('Replace', tests.replace);
-bench('Array', tests.array);
-bench('Object', tests.object);
-bench('Partial', tests.partial);
-bench('Recursion', tests.recursion);
-bench('Filter', tests.filter);
-bench('Complex', tests.complex);
+//bench('String', tests.string);
+//bench('Replace', tests.replace);
+//bench('Array', tests.array);
+//bench('Object', tests.object);
+//bench('Partial', tests.partial);
+//bench('Recursion', tests.recursion);
+//bench('Filter', tests.filter);
+//bench('Complex', tests.complex);
 

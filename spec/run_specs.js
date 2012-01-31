@@ -70,8 +70,10 @@ function runSpec(spec) {
 
 // Run the tests
 function runSpecs(specs) {
+  var res;
   for (var i = 0; i < specs.length; i++) {
-    if (runSpec(specs[i]) === 'fail') break;
+    res = runSpec(specs[i]);
+    if (res !== 'pass') break;
   }
 }
 
