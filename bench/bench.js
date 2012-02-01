@@ -1,188 +1,161 @@
 var Benchmark = require('benchmark')
   , colors = require('colors')
   , hb = require('./handlebars')
+	, dust = require('./dust')
   , mustache = require('./mustache')
   , mote = require('../mote')
   , hogan = require('./hogan');
 
-  var tests = {
+function createBenchmark(benchmarkName, templates, context, partials) {
+	partials = partials || {};
 
-    string: {
-      template: "Hello World!",
-      context: {}
-    },
+	/* Compile the partials */
+	var name = benchmarkName.toLowerCase();
+	if (partials.mustache) mote.compilePartial(name, partials.mustache[name]);
+	if (partials.handlebars) hb.registerPartial(name, partials.handlebars[name]);
+	if (partials.dust) dust.loadSource(dust.compile(partials.dust[name], name));
 
-    replace: {
-      template:  "Hello {{name}}! You have {{count}} new messages.",
-      context: { name: "Mick", count: 30 }
-    },
+	/* Compile the templates */
+	var muFn = mustache.compile(templates.mustache);
+	var hoTe = hogan.compile(templates.mustache);
+	var moFn = templates.mote ? mote.compile(templates.mote) : mote.compile(templates.mustache);
+	var hbFn = hb.compile(templates.handlebars);
+	dust.loadSource(dust.compile(templates.dust, benchmarkName));
 
-    array: {
-      template: "{{#names}}{{name}}{{/names}}",
-      context: {
-        names: [
-          {name: "Moe"},
-          {name: "Larry"},
-          {name: "Curly"},
-          {name: "Shemp"}
-        ]
-      }
-    },
+	function noop(){};
 
-    object: {
-      template: "{{#person}}{{name}}{{age}}{{/person}}",
-      context: {
-        person: {
-          name: "Larry",
-          age: 45
-        }
-      }
-    },
-
-    partial: {
-      template: "{{#peeps}}{{>replace}}{{/peeps}}",
-      context:  {
-        peeps: [
-          {name: "Moe", count: 15},
-          {name: "Larry", count: 5},
-          {name: "Curly", count: 1}
-        ]
-      },
-      partials: { replace: "Hello {{name}}! You have {{count}} new messages." }
-    },
-
-    recursion: {
-      template: "{{name}}{{#kids}}{{>recursion}}{{/kids}}",
-      context:  {
-        name: '1',
-        kids: [
-          {
-          name: '1.1',
-          kids: [
-            {name: '1.1.1', kids: []}
-          ]
-        }
-        ]
-      },
-      partials: { recursion: "{{name}}{{#kids}}{{>recursion}}{{/kids}}" }
-    },
-
-    filter: {
-      template: "{{#filter}}foo {{bar}}{{/filter}}",
-      context:  {
-        filter: function(buffer, context, fn) {
-          return fn(buffer, context).toUpperCase();
-        },
-        bar: "bar"
-      },
-      helper: [
-        'filter',
-        function(options) {
-          return options.fn(this).toUpperCase()
-        }
-      ],
-      muContext: {
-        filter: function(txt) {
-          return txt.toUpperCase();
-        },
-        BAR: 'BAR'
-      }
-    },
-
-    complex: {
-      template:
-        "<h1>{{header}}</h1>"                       +
-        "{{#items}}"                                +
-        "<ul>"                                      +
-        "{{#current}}"                              +
-        "<li><strong>{{name}}</strong></li>"        +
-        "{{/current}}"                              +
-        "{{^current}}"                              +
-        "<li><a href=\"{{url}}\">{{name}}</a></li>" +
-        "{{/current}}"                              +
-        "</ul>"                                     +
-        "{{/items}}"                                +
-        "{{^items}}"                                +
-        "<p>The list is empty.</p>"                 +
-        "{{/items}}",
-      context: {
-        header: function() {
-          return "Colors";
-        },
-        items: [
-          {name: "red", current: true, url: "#Red"},
-          {name: "green", current: false, url: "#Green"},
-          {name: "blue", current: false, url: "#Blue"}
-        ]
-      }
-    }
-  }
-
-function bench(name, test) {
-  var p, partial, suite, hbFn, moteFn, moteFn2, muFn, hoganFn, muContext;
-
-  hb.partials = {};
-  mote.clearCache();
-  mustache.clearCache();
-
-  if (test.partials) {
-    for (var p in test.partials) {
-      partial = test.partials[p];
-      mustache.compile(partial);
-      mote.compilePartial(p, partial);
-      hb.registerPartial(p, partial);
-    }
-  }
-
-  if (test.helper) {
-    hb.registerHelper(test.helper[0], test.helper[1]);
-  }
-
-  suite = new Benchmark.Suite(name)
-
-  hbFn = hb.compile(test.template)
-  moteFn = mote.compile(test.template)
-  muFn = mustache.compile(test.template);
-  hoganFn = hogan.compile(test.template);
-
-  muContext = (name === 'Filter') ? test.muContext : test.context;
-
-  console.log(name.white);
-  console.log(hoganFn.render(muContext, test.partials).yellow);
-  //console.log(muFn(muContext, test.partials).yellow);
-  console.log(hbFn(test.context).yellow);
-  console.log(moteFn(test.context).yellow);
-
-  //console.log(hoganFn.r.toString());
+	var suite = new Benchmark.Suite(benchmarkName);
 
   suite
-    .add('hogan', function() {
-      hoganFn.render(muContext, test.partials);
-    })
-    //.add('mustache', function() {
-      //muFn(muContext, test.partials);
-    //})
-    .add('handlebars', function() {
-      hbFn(test.context);
-    })
-    .add('mote', function() {
-      moteFn(test.context);
-    })
-    .on('cycle', function(event, bench) {
-      console.log(bench.toString());
-    })
+		.add('mustache', function() { muFn(context, partials.mustache); })
+    .add('hogan', function() { hoTe.render(context, partials.mustache); })
+    .add('mote', function() { moFn(context); })
+    .add('handlebars', function() { hbFn(context); })
+    .add('dust', function() { dust.render(benchmarkName, context, noop); })
+		.on('start', function() {
+			console.log(('[' + benchmarkName + ']').white);
+			console.log('mu: ' + muFn(context, partials.mustache));
+			console.log('ho: ' + hoTe.render(context, partials.mustache));
+			console.log('mo: ' + moFn(context));
+			console.log('hb: ' + hbFn(context));
+			dust.render(benchmarkName, context, function(err, out) {
+				console.log('du: ' + out);
+			});
+		})
+    .on('cycle', function(event, bench) { console.log(bench.toString()); })
     .on('complete', function() {
       console.log(('Fastest: ' + this.filter('fastest').pluck('name')).green);
     })
-    .run();
+
+	return { run: function() { suite.run(); } };
+
 }
 
-//bench('String', tests.string);
-//bench('Replace', tests.replace);
-//bench('Array', tests.array);
-//bench('Object', tests.object);
-//bench('Partial', tests.partial);
-//bench('Recursion', tests.recursion);
-//bench('Filter', tests.filter);
-//bench('Complex', tests.complex);
+var string = createBenchmark('String', {
+	mustache: "Hello World!",
+	handlebars: "Hello World!",
+	dust: "Hello World!"
+});
 
+var replace = createBenchmark('Replace', {
+	mustache: "Hello {{name}}! You have {{count}} new messages.",
+	handlebars: "Hello {{name}}! You have {{count}} new messages.",
+	dust: "Hello {name}! You have {count} new messages."
+}, {
+	name: "Mick",
+	count: 30
+});
+
+var array = createBenchmark('Array', {
+	mustache: "{{#names}}{{name}}{{/names}}",
+	handlebars: "{{#each names}}{{name}}{{/each}}",
+	dust: "{#names}{name}{/names}"
+}, {
+	names: [
+		{name: "Moe"},
+		{name: "Larry"},
+		{name: "Curly"},
+		{name: "Shemp"}
+	]
+});
+
+var object = createBenchmark('Object', {
+	mustache: "{{#person}}{{name}}{{age}}{{/person}}",
+	handlebars: "{{#with person}}{{name}}{{age}}{{/with}}",
+	dust: "{#person}{name}{age}{/person}"
+}, {
+	person: {
+		name: "Larry",
+		age: 45
+	}
+});
+
+var partial = createBenchmark('Partial', {
+	mustache: "{{#peeps}}{{>partial}}{{/peeps}}",
+	handlebars: "{{#each peeps}}{{>partial}}{{/each}}",
+	dust: "{#peeps}{>partial/}{/peeps}"
+}, {
+	peeps: [
+		{name: "Moe", count: 15},
+		{name: "Larry", count: 5},
+		{name: "Curly", count: 1},
+	]
+}, {
+	mustache: {partial: "Hello {{name}}! You have {{count}} new messages."},
+	handlebars: {partial: "Hello {{name}}! You have {{count}} new messages."},
+	dust: {partial: "Hello {name}! You have {count} new messages."},
+});
+
+var recursion = createBenchmark('Recursion', {
+	mustache: "{{name}}{{#kids}}{{>recursion}}{{/kids}}",
+	handlebars: "{{name}}{{#each kids}}{{>recursion}}{{/each}}",
+	dust: "{name}{#kids}{>Recursion:./}{/kids}",
+}, {
+	name: '1',
+	kids: [{
+		name: '1.1',
+		kids: [{
+			name: '1.1.1',
+			kids: []
+		}]
+	}]
+}, {
+	mustache: { recursion: "{{name}}{{#kids}}{{>recursion}}{{/kids}}" },
+	handlebars: { recursion: "{{name}}{{#each kids}}{{>recursion}}{{/each}}" },
+});
+
+var complex = createBenchmark('Complex', {
+	mustache: "<h1>{{header}}</h1>{{#hasItems}}<ul>{{#items}}{{#current}}<li><strong>{{name}}</strong></li>{{/current}}{{^current}}<li><a href=\"{{url}}\">{{name}}</a></li>{{/current}}{{/items}}</ul>{{/hasItems}}{{^items}}<p>The list is empty.</p{{/items}}",
+	mote: "<h1>{{header}}</h1>{{?items}}<ul>{{#items}}{{#current}}<li><strong>{{name}}</strong></li>{{/current}}{{^current}}<li><a href=\"{{url}}\">{{name}}</a></li>{{/current}}{{/items}}</ul>{{/items}}{{^items}}<p>The list is empty.</p{{/items}}",
+	handlebars: "<h1>{{header}}</h1>{{#if items}}<ul>{{#each items}}{{#if current}}<li><strong>{{name}}</strong></li>{{else}}<li><a href=\"{{url}}\">{{name}}</a></li>{{/if}}{{/each}}</ul>{{else}}<p>The list is empty.</p>{{/if}}",
+	dust: "<h1>{header}</h1>\n"
+		+  "{?items}\n"
+		+  "  <ul>\n"
+		+  "    {#items}\n"
+		+  "      {#current}\n"
+		+  "        <li><strong>{name}</strong></li>\n"
+		+  "      {:else}\n"
+		+  "        <li><a href=\"{url}\">{name}</a></li>\n"
+		+  "      {/current}\n"
+		+  "    {/items}\n"
+		+  "  </ul>\n"
+		+  "{:else}\n"
+		+  "  <p>The list is empty.</p>\n"
+		+  "{/items}"
+}, {
+	header: function() { return "Colors"; },
+	hasItems: true,
+	items: [
+		{name: "red", current: true, url: "#Red"},
+		{name: "green", current: false, url: "#Green"},
+		{name: "blue", current: false, url: "#Blue"}
+	]
+})
+
+string.run();
+replace.run();
+array.run();
+object.run();
+partial.run();
+recursion.run();
+complex.run();
