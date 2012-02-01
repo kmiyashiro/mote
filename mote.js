@@ -94,7 +94,7 @@ Parser.prototype.re = {
   newline: /\r?\n/,
   whitespace: /[ \t]*/,
   trailing: /[ \t]*(?:\r?\n|$)/,
-  tagtype: /\{|&|#|\^|\/|>|=|!/,
+  tagtype: /\{|&|#|\^|\/|>|=|!|\?/,
   allowed: /[\w\$\.]+/,
   linebeginnings: /(^|\n)([^\r\n])/g
 };
@@ -212,10 +212,13 @@ Parser.prototype.addTag = function(type, content, padding, start, end) {
     case '!':
       break;
     case '#':
-      this.openSection(content, {invert: false, start: end});
+      this.openSection(content, {sectionType: 'section', start: end});
       break;
     case '^':
-      this.openSection(content, {invert: true, start: end});
+      this.openSection(content, {sectionType: 'inverted', start: end});
+      break;
+    case '?':
+      this.openSection(content, {sectionType: 'exists', start: end});
       break;
     case '/':
       this.closeSection(content, {end: start});
@@ -242,7 +245,7 @@ Parser.prototype.setDelimiters = function(content) {
 
 Parser.prototype.openSection = function(content, options) {
   var section = {
-    type: options.invert ? 'invertedSection' : 'section',
+    type: options.sectionType,
     key: content,
     tokens: [],
     raw: options.start
@@ -370,21 +373,26 @@ Compiler.prototype.compile_partial = function(token) {
     + ')';
 };
 
-Compiler.prototype.compile_section = function(token) {
+Compiler.prototype.sectionCompiler = function(token, sectionType) {
   var index = this.index++;
   this.sections[index] = this.compileTokens(token.tokens);
-  return '  + w.section(context.lookup(' + token.key + ')'
+  return '  + w.' + sectionType + '(context.lookup(' + token.key + ')'
     + ', context'
     + ', section' + index + ')';
 };
 
-Compiler.prototype.compile_invertedSection = function(token) {
-  var index = this.index++;
-  this.sections[index] = this.compileTokens(token.tokens);
-  return '  + w.invertedSection(context.lookup(' + token.key + ')'
-    + ', context'
-    + ', section' + index + ')';
+Compiler.prototype.compile_section = function(token) {
+  return this.sectionCompiler(token, 'section');
 };
+
+Compiler.prototype.compile_inverted = function(token) {
+  return this.sectionCompiler(token, 'inverted');
+};
+
+Compiler.prototype.compile_exists = function(token) {
+  return this.sectionCompiler(token, 'exists');
+};
+
 
 /**
  * Writer
@@ -401,6 +409,7 @@ Writer.prototype.Lt = /</g;
 Writer.prototype.Gt = />/g;
 Writer.prototype.Quot = /"/g;
 Writer.prototype.escapeRE = /[&"<>]/g;
+Writer.prototype.loadTemplate = loadTemplate;
 
 Writer.prototype.escapeHTML = function(str) {
   return this.escapeRE.test(str)
@@ -422,7 +431,7 @@ Writer.prototype.variable = function(value, context, escape) {
 };
 
 Writer.prototype.partial = function(value, context, options) {
-  return loadTemplate(value)(context, options);
+  return this.loadTemplate(value)(context, options);
 };
 
 Writer.prototype.section = function(value, context, fn) {
@@ -440,11 +449,18 @@ Writer.prototype.section = function(value, context, fn) {
   return '';
 };
 
-Writer.prototype.invertedSection = function(value, context, fn) {
+Writer.prototype.inverted = function(value, context, fn) {
   if (!value || (this.isArray(value) && value.length === 0)) {
     return fn(context, this);
   }
   return '';
+};
+
+Writer.prototype.exists = function(value, context, fn) {
+  if (!value || (this.isArray(value) && value.length === 0)) {
+    return '';
+  }
+  return fn(context, this);
 };
 
 /**
@@ -528,6 +544,7 @@ function compilePartial(name, template) {
   return cache[name];
 }
 
+exports.cache          = cache;
 exports.clearCache     = clearCache;
 exports.loadTemplate   = loadTemplate;
 exports.compile        = compile;
