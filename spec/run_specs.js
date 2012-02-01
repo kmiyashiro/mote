@@ -3,7 +3,6 @@ var colors = require('colors');
 var fs = require('fs');
 
 
-
 function loadSpecsFromFile(filename) {
   var specs = fs.readFileSync(__dirname + '/specs/' + filename + '.json', 'utf8');
   return JSON.parse(specs).tests;
