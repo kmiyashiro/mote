@@ -317,10 +317,10 @@ function Compiler() {
 Compiler.prototype.compile = function(template) {
   var source, tokens = parse(template);
 
-  source = '  return ""' + this.compileTokens(tokens) + ';';
-  source = '  var w = writer;' + this.compileSections() + source;
+  source = '  return ' + this.compileTokens(tokens).substring(3) + ';';
+  source = this.compileSections() + source;
 
-  return new Function('context, writer', source);
+  return new Function('context, w', source);
 };
 
 Compiler.prototype.compileTokens = function(tokens) {
@@ -337,11 +337,10 @@ Compiler.prototype.compileSections = function() {
     , out = '';
 
   for (id in this.sections) {
-    out += 'function section' + id + '(context, writer) {'
-         + '  var w = writer;'
-         + '  return ""'
-         + this.sections[id]
-         + ';}';
+    out += '  function section' + id + '(context, w) {\n'
+         + '    return '
+         + this.sections[id].substring(3)
+         + ';\n  }\n';
   }
   return out;
 };
@@ -351,15 +350,15 @@ Compiler.prototype.compileToken = function(token) {
 };
 
 Compiler.prototype.compile_text = function(token) {
-  return '  + ' + e(token.value) + '';
+  return ' + ' + e(token.value) + '';
 };
 
 Compiler.prototype.compile_sol = function(token) {
-  return '  + w.sol()';
+  return ' + w.sol()';
 };
 
 Compiler.prototype.compile_variable = function(token) {
-  return '  + w.variable('
+  return ' + w.variable('
     + 'context.lookup(' + token.key + ')'
     + ', context'
     + ', ' + token.escape
@@ -367,7 +366,7 @@ Compiler.prototype.compile_variable = function(token) {
 };
 
 Compiler.prototype.compile_partial = function(token) {
-  return '  + w.partial(' + token.key
+  return ' + w.partial(' + token.key
     + ', context'
     + ', {indent: ' + e(token.indent) + '}'
     + ')';
@@ -376,7 +375,7 @@ Compiler.prototype.compile_partial = function(token) {
 Compiler.prototype.sectionCompiler = function(token, sectionType) {
   var index = this.index++;
   this.sections[index] = this.compileTokens(token.tokens);
-  return '  + w.' + sectionType + '(context.lookup(' + token.key + ')'
+  return ' + w.' + sectionType + '(context.lookup(' + token.key + ')'
     + ', context'
     + ', section' + index + ')';
 };
