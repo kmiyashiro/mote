@@ -51,15 +51,15 @@ Scanner.prototype.scanUntil = function(re) {
     , pos = this.str.search(re);
 
   switch (pos) {
-    case -1 :
+    case -1:
       match = this.str;
       this.pos += this.str.length;
-      this.str = ''
+      this.str = '';
       break;
-    case 0  :
+    case 0:
       match = null;
       break;
-    default :
+    default:
       match = this.str.substring(0, pos);
       this.str = this.str.substring(pos);
       this.pos += pos;
@@ -96,20 +96,16 @@ Parser.prototype.re = {
   trailing: /[ \t]*(?:\r?\n|$)/,
   tagtype: /\{|&|#|\^|\/|>|=|!|\?/,
   allowed: /[\w\$\.]+/,
-  linebeginnings: /(^|\n)([^\r\n])/g
+  lines: /(.*)(\r?\n)?/g
 };
 
 Parser.prototype.standalone = function(type) {
   return type && type !== '{' && type !== '&';
 };
 
-Parser.prototype.addIndentationTo = function(str, indent) {
-  return str.replace(this.re.linebeginnings, '$1' + indent + '$2');
-};
-
 Parser.prototype.parse = function(str, options) {
   options = options || {};
-  if (options.indent) str = this.addIndentationTo(str, options.indent)
+
   if (options.otag && options.ctag) {
     this.otag = options.otag;
     this.ctag = options.ctag;
@@ -123,14 +119,13 @@ Parser.prototype.parse = function(str, options) {
 };
 
 Parser.prototype.scanTags = function() {
-  var otag, padding, type, content, startOfLine, start, end
+  var otag, padding, type, content, startOfLine
     , standAlone = false;
 
   this.scanText();
 
   startOfLine = this.scanner.startOfLine();
   if (startOfLine && !this.scanner.eos()) this.addLineStart();
-  start = this.scanner.pos;
 
   // Match the opening tag.
   if (!(otag = this.scanner.scan(this.re.opentag))) return;
@@ -138,7 +133,6 @@ Parser.prototype.scanTags = function() {
   // Handle leading whitespace
   padding = this.re.whitespace.exec(otag);
   padding = padding && padding[0];
-  start += padding.length;
 
   // Get the tag's type.
   type = this.scanner.scan(this.re.tagtype);
@@ -175,9 +169,7 @@ Parser.prototype.scanTags = function() {
     padding = '';
   }
 
-  end = this.scanner.pos;
-
-  this.addTag(type, content, padding, start, end);
+  this.addTag(type, content, padding);
 };
 
 Parser.prototype.scanText = function(str) {
@@ -194,17 +186,16 @@ Parser.prototype.addText = function(text) {
 
   if (!text) return;
 
-  lines = text.match(/(.*)(\r?\n)?/g);
+  lines = text.match(this.re.lines);
   lines.pop();
 
   for (i = 0, len = lines.length; i < len; i++) {
     this.text(lines[i]);
     if (i < len - 1) this.addLineStart();
   }
-
 };
 
-Parser.prototype.addTag = function(type, content, padding, start, end) {
+Parser.prototype.addTag = function(type, content, padding) {
   switch (type) {
     case '=':
       this.setDelimiters(content);
@@ -212,16 +203,16 @@ Parser.prototype.addTag = function(type, content, padding, start, end) {
     case '!':
       break;
     case '#':
-      this.openSection(content, {sectionType: 'section', start: end});
+      this.openSection(content, {sectionType: 'section'});
       break;
     case '^':
-      this.openSection(content, {sectionType: 'inverted', start: end});
+      this.openSection(content, {sectionType: 'inverted'});
       break;
     case '?':
-      this.openSection(content, {sectionType: 'exists', start: end});
+      this.openSection(content, {sectionType: 'exists'});
       break;
     case '/':
-      this.closeSection(content, {end: start});
+      this.closeSection(content);
       break;
     case '>':
       this.partial(content, padding);
@@ -248,7 +239,6 @@ Parser.prototype.openSection = function(content, options) {
     type: options.sectionType,
     key: content,
     tokens: [],
-    raw: options.start
   };
   this.tokenCollector.push(section);
   this.sections.push(section);
@@ -266,10 +256,6 @@ Parser.prototype.closeSection = function(content, options) {
   if (section.key !== content) {
     throw new Error('Unclosed section: ' + section.key);
   }
-
-  section.raw = this.scanner.raw.substring(section.raw, options.end);
-  section.otag = this.otag;
-  section.ctag = this.ctag;
 
   last = this.sections.length - 1;
 
@@ -338,10 +324,10 @@ Compiler.prototype.compileSections = function() {
 
   for (id in this.sections) {
     out += '  function section' + id + '(context, w) {\n'
-         + '    return '
-         + this.sections[id].substring(3)
-         + ';\n  }\n';
+         + '    return ' + this.sections[id].substring(3) + ';\n'
+         + '  }\n';
   }
+
   return out;
 };
 
@@ -361,35 +347,35 @@ Compiler.prototype.compile_variable = function(token) {
   return ' + w.variable('
     + 'context.lookup(' + token.key + ')'
     + ', context'
-    + ', ' + token.escape
-    + ')';
+    + ', ' + token.escape + ')';
 };
 
 Compiler.prototype.compile_partial = function(token) {
   return ' + w.partial(' + token.key
     + ', context'
-    + ', {indent: ' + e(token.indent) + '}'
-    + ')';
+    + ', {indent: ' + e(token.indent) + '})';
 };
 
-Compiler.prototype.sectionCompiler = function(token, sectionType) {
+Compiler.prototype.compileSectionTokens = function(token, sectionType) {
   var index = this.index++;
+
   this.sections[index] = this.compileTokens(token.tokens);
+
   return ' + w.' + sectionType + '(context.lookup(' + token.key + ')'
     + ', context'
     + ', section' + index + ')';
 };
 
 Compiler.prototype.compile_section = function(token) {
-  return this.sectionCompiler(token, 'section');
+  return this.compileSectionTokens(token, 'section');
 };
 
 Compiler.prototype.compile_inverted = function(token) {
-  return this.sectionCompiler(token, 'inverted');
+  return this.compileSectionTokens(token, 'inverted');
 };
 
 Compiler.prototype.compile_exists = function(token) {
-  return this.sectionCompiler(token, 'exists');
+  return this.compileSectionTokens(token, 'exists');
 };
 
 /**
@@ -403,14 +389,24 @@ Writer.set = function(options) {
   return this;
 };
 
+Writer.noop      = function() { return ''; };
 Writer.stringify = function(obj) { return obj ? ('' + obj) : ''; }
-Writer.isArray = isArray;
-Writer.Amp = /&/g;
-Writer.Lt = /</g;
-Writer.Gt = />/g;
-Writer.Quot = /"/g;
-Writer.escapeRE = /[&"<>]/g;
-Writer.noop = function(){return '';};
+Writer.isArray   = isArray;
+Writer.Amp       = /&/g;
+Writer.Lt        = /</g;
+Writer.Gt        = />/g;
+Writer.Quot      = /"/g;
+Writer.escapeRE  = /[&"<>]/g;
+
+Writer.escapeHTML = function(str) {
+  return this.escapeRE.test(str)
+    ? str
+      .replace(this.Amp,'&amp;')
+      .replace(this.Lt,'&lt;')
+      .replace(this.Gt,'&gt;')
+      .replace(this.Quot, '&quot;')
+    : str;
+};
 
 Writer.cache = {};
 
@@ -426,6 +422,7 @@ Writer.compile = function(template) {
   var compiler = new Compiler()
     , fn = compiler.compile(template)
     , self = this;
+
   return function(view, options) {
     return fn(Context.wrap(view), self.set(options));
   };
@@ -436,23 +433,18 @@ Writer.compilePartial = function(name, template) {
   return this.cache[name];
 }
 
-Writer.escapeHTML = function(str) {
-  return this.escapeRE.test(str)
-    ? str
-      .replace(this.Amp,'&amp;')
-      .replace(this.Lt,'&lt;')
-      .replace(this.Gt,'&gt;')
-      .replace(this.Quot, '&quot;')
-    : str;
-};
-
 Writer.sol = function() {
   return this.indent;
 };
 
 Writer.variable = function(value, context, escape) {
-  if (typeof value === 'function') value = value.call(context.root);
-  return escape ? this.escapeHTML(this.stringify(value)) : this.stringify(value);
+  if (typeof value === 'function') {
+    value = value.call(context.root);
+  }
+
+  return escape
+    ? this.escapeHTML(this.stringify(value))
+    : this.stringify(value);
 };
 
 Writer.partial = function(value, context, options) {
@@ -460,9 +452,12 @@ Writer.partial = function(value, context, options) {
 };
 
 Writer.section = function(value, context, fn) {
+  var out, i, len;
+
   if (this.isArray(value)) {
-    var out = '';
-    for (var i = 0, len = value.length; i < len; i++) {
+    out = '';
+    len = value.length;
+    for (i = 0; i < len; i++) {
       out += fn(context.push(value[i]), this);
     }
     return out;
@@ -475,17 +470,15 @@ Writer.section = function(value, context, fn) {
 };
 
 Writer.inverted = function(value, context, fn) {
-  if (!value || (this.isArray(value) && value.length === 0)) {
-    return fn(context, this);
-  }
-  return '';
+  return (!value || (this.isArray(value) && value.length === 0))
+    ? fn(context, this)
+    : '';
 };
 
 Writer.exists = function(value, context, fn) {
-  if (!value || (this.isArray(value) && value.length === 0)) {
-    return '';
-  }
-  return fn(context, this);
+  return (!value || (this.isArray(value) && value.length === 0))
+    ? ''
+    : fn(context, this);
 };
 
 /**
@@ -501,8 +494,7 @@ function Context(obj, tail, root) {
 Context.prototype.isArray = isArray;
 
 Context.wrap = function(obj) {
-  if (obj instanceof Context) return obj;
-  else return new Context(obj);
+  return (obj instanceof Context) ? obj : new Context(obj);
 };
 
 Context.prototype.push = function(obj) {
@@ -510,16 +502,16 @@ Context.prototype.push = function(obj) {
 };
 
 Context.prototype.lookup = function(key) {
-  var i, value, getter
+  var value
+    , getter = this.isArray(key) ? 'getPath' : 'get'
     , node = this;
-
-  getter = this.isArray(key) ? 'getPath' : 'get';
 
   while (node) {
     value = this[getter](node.head, key);
     if (value) return value;
     node = node.tail;
   }
+
   return undefined;
 }
 
@@ -528,9 +520,11 @@ Context.prototype.get = function(obj, key) {
 };
 
 Context.prototype.getPath = function(obj, key) {
-  var i, len , value = obj;
+  var i = 0
+    , len = key.length
+    , value = obj;
 
-  for (i = 0, len = key.length; i < len; i++) {
+  for (; i < len; i++) {
     if (!value) return undefined;
     value = value[key[i]];
   }
@@ -555,5 +549,7 @@ exports.compile = function(template) {
 exports.compilePartial = function(name, template) {
   return Writer.compilePartial(name, template);
 }
+
+exports.Writer = Writer;
 
 })(mote);
