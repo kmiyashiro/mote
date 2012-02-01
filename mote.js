@@ -6,26 +6,9 @@ var mote = ((typeof module !== 'undefined') && module.exports) || {};
  * Utilities
  */
 
-function stringify(obj) {
-  return obj ? ('' + obj) : '';
-}
-
 var isArray = Array.isArray || function(obj) {
   return Object.prototype.toString.call(obj) == '[object Array]';
 };
-
-var escapeChars = {
-  '&': '&amp;',
-  '"': '&quot;',
-  '<': '&lt;',
-  '>': '&gt;'
-}
-
-function escapeHTML(str) {
-  return str.replace(/[&"<>]/g, function(str) {
-    return escapeChars[str];
-  });
-}
 
 // Credit to Simon Willison and Colin Snover:
 // http://simonwillison.net/2006/Jan/20/escape/
@@ -411,13 +394,31 @@ function Writer(options) {
   this.indent = options && options.indent;
 }
 
+Writer.prototype.stringify = function(obj) { return obj ? ('' + obj) : ''; }
+Writer.prototype.isArray = isArray;
+Writer.prototype.Amp = /&/g;
+Writer.prototype.Lt = /</g;
+Writer.prototype.Gt = />/g;
+Writer.prototype.Quot = /"/g;
+Writer.prototype.escapeRE = /[&"<>]/g;
+
+Writer.prototype.escapeHTML = function(str) {
+  return this.escapeRE.test(str)
+    ? str
+        .replace(this.Amp,'&amp;')
+        .replace(this.Lt,'&lt;')
+        .replace(this.Gt,'&gt;')
+        .replace(this.Quot, '&quot;')
+    : str;
+};
+
 Writer.prototype.sol = function() {
   return this.indent || '';
 };
 
 Writer.prototype.variable = function(value, context, escape) {
   if (typeof value === 'function') value = value.call(context.root);
-  return escape ? escapeHTML(stringify(value)) : stringify(value);
+  return escape ? this.escapeHTML(this.stringify(value)) : this.stringify(value);
 };
 
 Writer.prototype.partial = function(value, context, options) {
@@ -425,7 +426,7 @@ Writer.prototype.partial = function(value, context, options) {
 };
 
 Writer.prototype.section = function(value, context, fn) {
-  if (isArray(value)) {
+  if (this.isArray(value)) {
     var out = '';
     for (var i = 0, len = value.length; i < len; i++) {
       out += fn(context.push(value[i]), this);
@@ -440,7 +441,7 @@ Writer.prototype.section = function(value, context, fn) {
 };
 
 Writer.prototype.invertedSection = function(value, context, fn) {
-  if (!value || (isArray(value) && value.length === 0)) {
+  if (!value || (this.isArray(value) && value.length === 0)) {
     return fn(context, this);
   }
   return '';
@@ -456,6 +457,8 @@ function Context(obj, tail, root) {
   this.root = root || obj;
 }
 
+Context.prototype.isArray = isArray;
+
 Context.wrap = function(obj) {
   if (obj instanceof Context) return obj;
   else return new Context(obj);
@@ -469,7 +472,7 @@ Context.prototype.lookup = function(key) {
   var i, value, getter
     , node = this;
 
-  getter = isArray(key) ? 'getPath' : 'get';
+  getter = this.isArray(key) ? 'getPath' : 'get';
 
   while (node) {
     value = this[getter](node.head, key);
