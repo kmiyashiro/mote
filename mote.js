@@ -393,48 +393,74 @@ Compiler.prototype.compile_exists = function(token) {
   return this.sectionCompiler(token, 'exists');
 };
 
-
 /**
  * Writer
  */
 
-function Writer(options) {
-  this.indent = options && options.indent;
+var Writer = {};
+
+Writer.set = function(options) {
+  this.indent = (options && options.indent) ? options.indent : '';
+  return this;
+};
+
+Writer.stringify = function(obj) { return obj ? ('' + obj) : ''; }
+Writer.isArray = isArray;
+Writer.Amp = /&/g;
+Writer.Lt = /</g;
+Writer.Gt = />/g;
+Writer.Quot = /"/g;
+Writer.escapeRE = /[&"<>]/g;
+Writer.noop = function(){return '';};
+
+Writer.cache = {};
+
+Writer.clearCache = function() {
+  this.cache = {};
+};
+
+Writer.loadTemplate = function(name) {
+  return this.cache[name] || this.noop;
+};
+
+Writer.compile = function(template) {
+  var compiler = new Compiler()
+    , fn = compiler.compile(template)
+    , self = this;
+  return function(view, options) {
+    return fn(Context.wrap(view), self.set(options));
+  };
 }
 
-Writer.prototype.stringify = function(obj) { return obj ? ('' + obj) : ''; }
-Writer.prototype.isArray = isArray;
-Writer.prototype.Amp = /&/g;
-Writer.prototype.Lt = /</g;
-Writer.prototype.Gt = />/g;
-Writer.prototype.Quot = /"/g;
-Writer.prototype.escapeRE = /[&"<>]/g;
-Writer.prototype.loadTemplate = loadTemplate;
+Writer.compilePartial = function(name, template) {
+  this.cache[name] = this.compile(template);
+  return this.cache[name];
+}
 
-Writer.prototype.escapeHTML = function(str) {
+Writer.escapeHTML = function(str) {
   return this.escapeRE.test(str)
     ? str
-        .replace(this.Amp,'&amp;')
-        .replace(this.Lt,'&lt;')
-        .replace(this.Gt,'&gt;')
-        .replace(this.Quot, '&quot;')
+      .replace(this.Amp,'&amp;')
+      .replace(this.Lt,'&lt;')
+      .replace(this.Gt,'&gt;')
+      .replace(this.Quot, '&quot;')
     : str;
 };
 
-Writer.prototype.sol = function() {
-  return this.indent || '';
+Writer.sol = function() {
+  return this.indent;
 };
 
-Writer.prototype.variable = function(value, context, escape) {
+Writer.variable = function(value, context, escape) {
   if (typeof value === 'function') value = value.call(context.root);
   return escape ? this.escapeHTML(this.stringify(value)) : this.stringify(value);
 };
 
-Writer.prototype.partial = function(value, context, options) {
+Writer.partial = function(value, context, options) {
   return this.loadTemplate(value)(context, options);
 };
 
-Writer.prototype.section = function(value, context, fn) {
+Writer.section = function(value, context, fn) {
   if (this.isArray(value)) {
     var out = '';
     for (var i = 0, len = value.length; i < len; i++) {
@@ -449,14 +475,14 @@ Writer.prototype.section = function(value, context, fn) {
   return '';
 };
 
-Writer.prototype.inverted = function(value, context, fn) {
+Writer.inverted = function(value, context, fn) {
   if (!value || (this.isArray(value) && value.length === 0)) {
     return fn(context, this);
   }
   return '';
 };
 
-Writer.prototype.exists = function(value, context, fn) {
+Writer.exists = function(value, context, fn) {
   if (!value || (this.isArray(value) && value.length === 0)) {
     return '';
   }
@@ -517,37 +543,18 @@ Context.prototype.getPath = function(obj, key) {
  * mote
  */
 
-var cache = {};
+exports.cache = Writer.cache;
 
-function clearCache() {
-  cache = {};
+exports.clearCache = function() {
+  Writer.clearCache();
+};
+
+exports.compile = function(template) {
+  return Writer.compile(template);
 }
 
-function noop() {
-  return '';
+exports.compilePartial = function(name, template) {
+  return Writer.compilePartial(name, template);
 }
-
-function loadTemplate(name) {
-  return cache[name] || noop;
-}
-
-function compile(template) {
-  var c = new Compiler();
-  var fn = c.compile(template);
-  return function(view, options) {
-    return fn(Context.wrap(view), new Writer(options));
-  };
-}
-
-function compilePartial(name, template) {
-  cache[name] = compile(template);
-  return cache[name];
-}
-
-exports.cache          = cache;
-exports.clearCache     = clearCache;
-exports.loadTemplate   = loadTemplate;
-exports.compile        = compile;
-exports.compilePartial = compilePartial;
 
 })(mote);
