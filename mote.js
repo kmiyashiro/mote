@@ -76,12 +76,12 @@ function parse(template) {
   return p.parse(template);
 }
 
-function Parser(otag, ctag) {
+function Parser() {
   this.tokens = [];
   this.tokenCollector = this.tokens;
   this.sections = [];
-  this.otag = otag || '{{';
-  this.ctag = ctag || '}}';
+  this.otag = '{{';
+  this.ctag = '}}';
   this.compileRegexen();
 }
 
