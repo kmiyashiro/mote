@@ -552,4 +552,6 @@ exports.compilePartial = function(name, template) {
 
 exports.Writer = Writer;
 
+exports.VERSION = "0.1.0";
+
 })(mote);
