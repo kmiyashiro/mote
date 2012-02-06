@@ -24,6 +24,12 @@ The answer, extremely surprising to me, was a resounding yes.
 [ho]: http://twitter.github.com/hogan.js/
 [du]: http://akdubya.github.com/dustjs/
 
+## Installation
+
+Via Node, it's as you'd expect:
+
+    npm install mote
+
 ## Benchmarks
 
 The libraries being tested:
@@ -139,7 +145,6 @@ document this better soon, for now you can look through the source.
 
 ## Roadmap
 
-- npm packaging
 - utilities for server-side compilation
 - documentation
 
