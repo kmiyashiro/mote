@@ -115,7 +115,12 @@ Parser.prototype.parse = function(str, options) {
   this.addLineStart();
   this.scanner = new Scanner(str);
   while (!this.scanner.eos()) this.scanTags();
-  return this.tokens;
+  return this.clean(this.tokens);
+};
+
+Parser.prototype.clean = function(tokens) {
+  if ((tokens.length > 1) && (tokens[1].type === 'sol')) tokens.shift();
+  return tokens;
 };
 
 Parser.prototype.scanTags = function() {
@@ -551,6 +556,8 @@ exports.compilePartial = function(name, template) {
 }
 
 exports.Writer = Writer;
+exports.Parser = Parser;
+exports.Compiler = Compiler;
 
 exports.VERSION = "0.1.0";
 
