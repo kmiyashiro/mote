@@ -302,16 +302,22 @@ Parser.prototype.text = function(text) {
 
 function Compiler() {
   this.partialIndex = 1;
+  this.partials = {};
   this.sectionIndex = 1;
   this.sections = {};
-  this.partials = {};
+  this.lookupIndex = 1;
+  this.lookups = {};
 }
 
 Compiler.prototype.compile = function(template) {
   var source, tokens = parse(template);
 
   source = '  return ' + this.compileTokens(tokens).substring(3) + ';';
-  source = '  i = i || "";\n' + this.compilePartials() + this.compileSections() + source;
+  source = this.extractLookups(source, '  ')
+         + '  i = i || "";\n'
+         + this.compilePartials()
+         + this.compileSections()
+         + source;
 
   return new Function('c, w, i', source);
 };
@@ -331,6 +337,7 @@ Compiler.prototype.compileSections = function() {
 
   for (id in this.sections) {
     out += '  function section' + id + '(c, w, i) {\n'
+         + this.extractLookups(this.sections[id], '    ')
          + '    return ' + this.sections[id].substring(3) + ';\n'
          + '  }\n';
   }
@@ -354,6 +361,32 @@ Compiler.prototype.compileToken = function(token) {
   return this['compile_' + token.type](token);
 };
 
+Compiler.prototype.compileLookup = function(key) {
+  var ref = 'lookup' + this.lookupIndex++;
+  var source = 'c.lookup(' + key + ');\n';
+  this.lookups[ref] = source;
+  return ref;
+};
+
+Compiler.prototype.extractLookups = function(source, indent) {
+  var i, len, ref, source
+    , refs = {}
+    , out = ''
+    , lookupRE = /lookup(\d+)/g
+    , lookups = source.match(lookupRE);
+
+  if (lookups) {
+    for (i = 0, len = lookups.length; i < len; i++) {
+      ref = lookups[i];
+      source = this.lookups[ref];
+      out += indent
+           + 'var ' + ref + ' = ' + (refs[source] || this.lookups[ref]);
+      refs[source] = ref + ';\n';
+    }
+  }
+  return out;
+};
+
 Compiler.prototype.compile_text = function(token) {
   return ' + ' + e(token.value) + '';
 };
@@ -363,8 +396,10 @@ Compiler.prototype.compile_sol = function(token) {
 };
 
 Compiler.prototype.compile_variable = function(token) {
+  var lookupRef = this.compileLookup(token.key);
+
   return ' + w.variable('
-    + 'c.lookup(' + token.key + ')'
+    + lookupRef
     + ', c, ' + token.escape + ')';
 };
 
@@ -377,11 +412,13 @@ Compiler.prototype.compile_partial = function(token) {
 };
 
 Compiler.prototype.compileSectionTokens = function(token, sectionType) {
-  var index = this.sectionIndex++;
+  var index = this.sectionIndex++
+    , lookupRef = this.compileLookup(token.key);
 
   this.sections[index] = this.compileTokens(token.tokens);
 
-  return ' + w.' + sectionType + '(c.lookup(' + token.key + ')'
+  return ' + w.' + sectionType + '('
+    + lookupRef
     + ', c, section' + index + ', i)';
 };
 
