@@ -301,17 +301,19 @@ Parser.prototype.text = function(text) {
  */
 
 function Compiler() {
-  this.index = 1;
+  this.partialIndex = 1;
+  this.sectionIndex = 1;
   this.sections = {};
+  this.partials = {};
 }
 
 Compiler.prototype.compile = function(template) {
   var source, tokens = parse(template);
 
   source = '  return ' + this.compileTokens(tokens).substring(3) + ';';
-  source = this.compileSections() + source;
+  source = '  i = i || "";\n' + this.compilePartials() + this.compileSections() + source;
 
-  return new Function('context, w', source);
+  return new Function('c, w, i', source);
 };
 
 Compiler.prototype.compileTokens = function(tokens) {
@@ -328,9 +330,21 @@ Compiler.prototype.compileSections = function() {
     , out = '';
 
   for (id in this.sections) {
-    out += '  function section' + id + '(context, w) {\n'
+    out += '  function section' + id + '(c, w, i) {\n'
          + '    return ' + this.sections[id].substring(3) + ';\n'
          + '  }\n';
+  }
+
+  return out;
+};
+
+Compiler.prototype.compilePartials = function() {
+  var id
+    , out = '';
+
+  for (id in this.partials) {
+    out += '  var partial' + id
+         + ' = w.loadTemplate(' + this.partials[id] + ');\n';
   }
 
   return out;
@@ -345,30 +359,30 @@ Compiler.prototype.compile_text = function(token) {
 };
 
 Compiler.prototype.compile_sol = function(token) {
-  return ' + w.sol()';
+  return ' + i';
 };
 
 Compiler.prototype.compile_variable = function(token) {
   return ' + w.variable('
-    + 'context.lookup(' + token.key + ')'
-    + ', context'
-    + ', ' + token.escape + ')';
+    + 'c.lookup(' + token.key + ')'
+    + ', c, ' + token.escape + ')';
 };
 
 Compiler.prototype.compile_partial = function(token) {
-  return ' + w.partial(' + token.key
-    + ', context'
-    + ', {indent: ' + e(token.indent) + '})';
+  var index = this.partialIndex++;
+
+  this.partials[index] = token.key;
+
+  return ' + partial' + index + '(c, ' +  e(token.indent) + ')';
 };
 
 Compiler.prototype.compileSectionTokens = function(token, sectionType) {
-  var index = this.index++;
+  var index = this.sectionIndex++;
 
   this.sections[index] = this.compileTokens(token.tokens);
 
-  return ' + w.' + sectionType + '(context.lookup(' + token.key + ')'
-    + ', context'
-    + ', section' + index + ')';
+  return ' + w.' + sectionType + '(c.lookup(' + token.key + ')'
+    + ', c, section' + index + ', i)';
 };
 
 Compiler.prototype.compile_section = function(token) {
@@ -428,8 +442,8 @@ Writer.compile = function(template) {
     , fn = compiler.compile(template)
     , self = this;
 
-  return function(view, options) {
-    return fn(Context.wrap(view), self.set(options));
+  return function(view, indent) {
+    return fn(Context.wrap(view), self, indent);
   };
 }
 
@@ -447,43 +461,45 @@ Writer.variable = function(value, context, escape) {
     value = value.call(context.root);
   }
 
+  value = value ? ('' + value) : '';
+
   return escape
-    ? this.escapeHTML(this.stringify(value))
-    : this.stringify(value);
+    ? this.escapeHTML(value)
+    : value;
 };
 
 Writer.partial = function(value, context, options) {
   return this.loadTemplate(value)(context, options);
 };
 
-Writer.section = function(value, context, fn) {
+Writer.section = function(value, context, fn, indent) {
   var out, i, len;
 
   if (this.isArray(value)) {
     out = '';
     len = value.length;
     for (i = 0; i < len; i++) {
-      out += fn(context.push(value[i]), this);
+      out += fn(context.push(value[i]), this, indent);
     }
     return out;
   } else if (typeof value === 'function') {
     return value.call(context.root, context, this, fn);
   } else if (value) {
-    return fn(context.push(value), this);
+    return fn(context.push(value), this, indent);
   }
   return '';
 };
 
-Writer.inverted = function(value, context, fn) {
+Writer.inverted = function(value, context, fn, indent) {
   return (!value || (this.isArray(value) && value.length === 0))
-    ? fn(context, this)
+    ? fn(context, this, indent)
     : '';
 };
 
-Writer.exists = function(value, context, fn) {
+Writer.exists = function(value, context, fn, indent) {
   return (!value || (this.isArray(value) && value.length === 0))
     ? ''
-    : fn(context, this);
+    : fn(context, this, indent);
 };
 
 /**
