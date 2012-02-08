@@ -561,21 +561,18 @@ Context.prototype.push = function(obj) {
 
 Context.prototype.lookup = function(key) {
   var value
-    , getter = this.isArray(key) ? 'getPath' : 'get'
     , node = this;
 
   while (node) {
-    value = this[getter](node.head, key);
+    value = this.isArray(key)
+      ? this.getPath(node.head, key)
+      : (key === '.') ? node.head : node.head[key]
     if (value) return value;
     node = node.tail;
   }
 
   return undefined;
 }
-
-Context.prototype.get = function(obj, key) {
-  return (key === '.') ? obj : obj[key];
-};
 
 Context.prototype.getPath = function(obj, key) {
   var i = 0
