@@ -440,11 +440,6 @@ Compiler.prototype.compile_exists = function(token) {
 
 var Writer = {};
 
-Writer.set = function(options) {
-  this.indent = (options && options.indent) ? options.indent : '';
-  return this;
-};
-
 Writer.noop      = function() { return ''; };
 Writer.stringify = function(obj) { return obj ? ('' + obj) : ''; }
 Writer.isArray   = isArray;
