@@ -441,22 +441,21 @@ Compiler.prototype.compile_exists = function(token) {
 var Writer = {};
 
 Writer.noop      = function() { return ''; };
-Writer.stringify = function(obj) { return obj ? ('' + obj) : ''; }
 Writer.isArray   = isArray;
-Writer.Amp       = /&/g;
-Writer.Lt        = /</g;
-Writer.Gt        = />/g;
-Writer.Quot      = /"/g;
 Writer.escapeRE  = /[&"<>]/g;
+Writer.escaper   = function(ch) {
+  switch (ch) {
+    case '&': return '&amp;'
+    case '<': return '&lt;'
+    case '>': return '&gt;'
+    case '"': return '&quot;'
+    default : return ch;
+  }
+};
 
 Writer.escapeHTML = function(str) {
-  return this.escapeRE.test(str)
-    ? str
-      .replace(this.Amp,'&amp;')
-      .replace(this.Lt,'&lt;')
-      .replace(this.Gt,'&gt;')
-      .replace(this.Quot, '&quot;')
-    : str;
+  if (!this.escapeRE.test(str)) return str;
+  return str.replace(this.escapeRE, this.escaper);
 };
 
 Writer.cache = {};
@@ -539,7 +538,7 @@ Writer.exists = function(value, context, fn, indent) {
  */
 
 function Context(obj, tail, root) {
-  this.head = obj;
+  this.obj = obj;
   this.tail = tail;
   this.root = root || obj;
 }
@@ -560,8 +559,8 @@ Context.prototype.lookup = function(key) {
 
   while (node) {
     value = this.isArray(key)
-      ? this.getPath(node.head, key)
-      : (key === '.') ? node.head : node.head[key]
+      ? this.getPath(node.obj, key)
+      : (key === '.') ? node.obj : node.obj[key]
     if (value) return value;
     node = node.tail;
   }
