@@ -1,0 +1,74 @@
+<!doctype html>
+
+<html>
+
+  <head>
+    <meta charset='UTF-8' />
+    <title>mote.js</title>
+
+    <!-- style -->
+    <link href='site/style.css' rel='stylesheet' type='text/css'>
+
+    <!-- scripts -->
+    <script src='http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js'></script>
+    <script src='bench/benchmark.js'></script>
+    <script src='bench/hogan.js'></script>
+    <script src='bench/dust.js'></script>
+    <script src='bench/mustache.js'></script>
+    <script src='bench/handlebars.js'></script>
+    <script src='mote.js'></script>
+    <script src='bench/bench.js'></script>
+    <script src='site/specs.js'></script>
+    <script src='site/color.js'></script>
+    <script src='site/index.js'></script>
+  </head>
+
+  <body>
+    <header>
+      <div class="container">
+        <h1>mote.js</h1>
+        <nav>
+          <li><a href="#">about</a></li>
+          <li><a href="#">docs</a></li>
+          <li><a href="#">bench</a></li>
+          <li><a href="#">spec</a></li>
+          <li><a href="#">code</a></li>
+        </nav>
+      </div>
+    </header>
+
+    <div class="container">
+      <section id="about"><h1>About</h1>
+</section>
+      <section id="docs"><h1>Docs</h1>
+</section>
+      <section id="bench"></section>
+      <section id="spec"></section>
+      <section id="code">
+        <p><a href="https://github.com/satchmorun/mote">Development happens on the Github.</a></p>
+      </section>
+    </div>
+
+    <script type='x-mote' id='result'>
+  <div class="bar"></div>
+  <div class="label">
+    {{name}}: {{?value}}{{opsSec}}K ops/sec{{/value}}
+  </div>
+</script>
+
+<script type='x-mote' id='suite'>
+  <div class="suite" id="{{name}}">
+    <button>run:{{name}}</button>
+  </div>
+</script>
+
+<script type='x-mote' id='spec-section'>
+  <h2>{{name}}</h2>
+  {{#results}}
+  <div class="spec-result {{status}}">{{description}}</div>
+  {{/results}}
+</script>
+
+
+  </body>
+</html>
