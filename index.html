@@ -72,6 +72,9 @@ was just supposed to be a toy.
 </p>
 <p>Much to my surprise, it ended up being really fast.
 
+</p>
+<h1>license</h1>
+<p>Mote is MIT-licensed.
 
 </p>
 
@@ -248,7 +251,9 @@ which takes the name that will later be used to lookup the partial.
 <p>Secondly, there&apos;s a little bit of trickery in the partial using &apos;.&apos; as the
 section key. The reason this works is that the existence section tag pushes its
 value onto the top of the lookup stack, and the &apos;.&apos; key always refers to the
-top of the stack.
+top of the stack. So the first &apos;.&apos; refers to the <code>items</code> array itself, and
+inside its section, the &apos;.&apos; refers to each item in the <code>items</code> array.
+
 </p>
 
       </section>
