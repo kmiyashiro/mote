@@ -310,7 +310,8 @@ function Compiler() {
 }
 
 Compiler.prototype.compile = function(template) {
-  var source, tokens = parse(template);
+  var source
+    , tokens = parse(template);
 
   source = '  return ' + this.compileTokens(tokens).substring(3) + ';';
   source = this.extractLookups(source, '  ')
@@ -483,16 +484,12 @@ Writer.compilePartial = function(name, template) {
   return this.cache[name];
 }
 
-Writer.sol = function() {
-  return this.indent;
-};
-
 Writer.variable = function(value, context, escape) {
   if (typeof value === 'function') {
     value = value.call(context.root);
   }
 
-  value = value ? ('' + value) : '';
+  value = (value != null) ? ('' + value) : '';
 
   return escape
     ? this.escapeHTML(value)
@@ -560,8 +557,8 @@ Context.prototype.lookup = function(key) {
   while (node) {
     value = this.isArray(key)
       ? this.getPath(node.obj, key)
-      : (key === '.') ? node.obj : node.obj[key]
-    if (value) return value;
+      : (key === '.') ? node.obj : node.obj[key];
+    if (value != null) return value;
     node = node.tail;
   }
 
@@ -574,7 +571,7 @@ Context.prototype.getPath = function(obj, key) {
     , value = obj;
 
   for (; i < len; i++) {
-    if (!value) return undefined;
+    if (value == null) return undefined;
     value = value[key[i]];
   }
 
