@@ -626,6 +626,6 @@ exports.Writer = Writer;
 exports.Parser = Parser;
 exports.Compiler = Compiler;
 
-exports.VERSION = "0.1.0";
+exports.VERSION = "0.2.0";
 
 })(mote);
