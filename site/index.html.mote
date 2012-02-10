@@ -20,6 +20,7 @@
     <script src='bench/bench.js'></script>
     <script src='site/specs.js'></script>
     <script src='site/color.js'></script>
+    <script src='site/highlight.pack.js'></script>
     <script src='site/index.js'></script>
   </head>
 
@@ -39,10 +40,10 @@
 
     <div class="container">
       <section id="about">
-        {{>about}}
+        {{{about}}}
       </section>
       <section id="docs">
-        {{>docs}}
+        {{{docs}}}
       </section>
       <section id="bench"></section>
       <section id="spec"></section>
@@ -51,6 +52,6 @@
       </section>
     </div>
 
-    {{>templates}}
+    {{{templates}}}
   </body>
 </html>

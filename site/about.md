@@ -27,6 +27,9 @@ was just supposed to be a toy.
 
 Much to my surprise, it ended up being really fast.
 
+# license
+
+Mote is MIT-licensed.
 
 [spec]: https://github.com/mustache/spec
 [mujs]: https://github.com/janl/mustache.js/
