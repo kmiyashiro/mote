@@ -22,8 +22,8 @@ SectionSwitcher.prototype.showSection = function(id) {
   this.currentSection = newSel;
 };
 
-var hsvMin = rgbToHsv(140, 15, 15);
-var hsvMax = rgbToHsv(242, 159, 5);
+var hsvMin = rgbToHsv(164, 0, 0);
+var hsvMax = rgbToHsv(78, 154, 6);
 
 function Result(name, value, max) {
   this.name = name;
@@ -52,7 +52,7 @@ Result.prototype.formatColor = function(ratio) {
   rgb[0] = Math.floor(rgb[0]);
   rgb[1] = Math.floor(rgb[1]);
   rgb[2] = Math.floor(rgb[2]);
-  return 'rgba(' + rgb[0] + ', ' + rgb[1] + ', ' + rgb[2] + ', 0.30)';
+  return 'rgb(' + rgb[0] + ', ' + rgb[1] + ', ' + rgb[2] + ')';
 };
 
 Result.prototype.update = function(min, max, value) {

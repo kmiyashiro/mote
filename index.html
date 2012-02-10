@@ -38,10 +38,49 @@
     </header>
 
     <div class="container">
-      <section id="about"><h1>About</h1>
-</section>
-      <section id="docs"><h1>Docs</h1>
-</section>
+      <section id="about">
+        <h1>mote</h1>
+        <p>Mote.js is a spec-compliant, fast implementation of <a href="http://mustache.github.com">mustache</a> templates.
+        See how it compares to the other popular engines by clicking the &quot;bench&quot; link
+        in the menu.
+        
+        </p>
+        <h1>mustache?</h1>
+        <p>See the <a href="http://mustache.github.com/mustache.5.html">mustache manual</a> for more information about the mustache
+        templating language.
+        
+        </p>
+        <p>Mote is fully compliant with all the required parts of the <a href="https://github.com/mustache/spec">mustache
+        spec,</a> with the exception of the optional lambda functionality.
+        
+        </p>
+        <p>Mote has lambda support, but it works a little differently from the spec. For
+        more, check out the docs.
+        
+        </p>
+        <h1>motivation</h1>
+        <p>Mote began its life as an exercise. I was experimenting with <a href="http://handlebarsjs.com/">Handlebars</a>
+        and <a href="http://akdubya.github.com/dustjs/">dust</a>, Twitter had just released <a href="http://twitter.github.com/hogan.js/">hogan</a>, and I thought it would
+        be fun to write a mustache implementation.
+        
+        </p>
+        <p>I got it working, then set about trying to make it fast. I didn&apos;t think I could
+        be competitive with the existing libraries, but I tried anyway. After all, this
+        was just supposed to be a toy.
+        
+        </p>
+        <p>Much to my surprise, it ended up being really fast.
+        
+        
+        </p>
+      </section>
+      <section id="docs">
+        <h1>Docs</h1>
+        <p>They&apos;re on their way. Read the <a href="https://github.com/satchmorun/mote/blob/master/mote.js">source</a> for now, it&apos;s only about
+        600LOC.
+        
+        </p>
+      </section>
       <section id="bench"></section>
       <section id="spec"></section>
       <section id="code">
@@ -49,26 +88,26 @@
       </section>
     </div>
 
+    <!-- templates -->
     <script type='x-mote' id='result'>
-  <div class="bar"></div>
-  <div class="label">
-    {{name}}: {{?value}}{{opsSec}}K ops/sec{{/value}}
-  </div>
-</script>
-
-<script type='x-mote' id='suite'>
-  <div class="suite" id="{{name}}">
-    <button>run:{{name}}</button>
-  </div>
-</script>
-
-<script type='x-mote' id='spec-section'>
-  <h2>{{name}}</h2>
-  {{#results}}
-  <div class="spec-result {{status}}">{{description}}</div>
-  {{/results}}
-</script>
-
-
+      <div class="bar"></div>
+      <div class="label">
+        {{name}}: {{?value}}{{opsSec}}K ops/sec{{/value}}
+      </div>
+    </script>
+    
+    <script type='x-mote' id='suite'>
+      <div class="suite" id="{{name}}">
+        <button>{{name}}</button>
+      </div>
+    </script>
+    
+    <script type='x-mote' id='spec-section'>
+      <h2>{{name}}</h2>
+      {{#results}}
+      <div class="spec-result {{status}}">{{description}}</div>
+      {{/results}}
+    </script>
+    
   </body>
 </html>

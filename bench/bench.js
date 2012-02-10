@@ -129,7 +129,7 @@ function createBenchmark(benchmarkName, templates, context, partials) {
 
   var suite = new Benchmark.Suite(benchmarkName);
   Benchmark.options.maxTime = 1;
-  Benchmark.options.delay = 0.05;
+  Benchmark.options.delay = 0.1;
 
   suite
     .add('mustache', function() { muFn(context, partials.mustache); })

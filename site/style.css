@@ -2,7 +2,8 @@ body {
   background-image: url(broken_noise.png);
   margin: 0 auto;
   padding: 80px 0 0;
-  color: #444;
+  color: #777;
+  font-family: Georgia, serif;
 }
 
 .container {
@@ -11,7 +12,7 @@ body {
 }
 
 header {
-  background-color: black;
+  background-color: rgba(0, 0, 0, 0.80);
   height: 80px;
   position: fixed;
   top: 0;
@@ -21,11 +22,10 @@ header {
 }
 
 header h1 {
-  font-family: Georgia, serif;
   font-size: 32px;
   font-weight: bold;
   margin: 0 0 16px;
-  color: #bf1e0f;
+  /*text-shadow: 0 0 20px #fcaf3e;*/
   display: inline;
   height: 80px;
   line-height: 80px;
@@ -43,15 +43,15 @@ nav li {
 }
 
 nav a {
-  font-size: 24px;
+  font-size: 20px;
   height: 40px;
-  color: #444;
+  color: #888a85;
   line-height: 40px;
   text-decoration: none;
 }
 
-h1, h2 {
-  color: #aaa;
+nav a:hover {
+  color: #d3d7cf;
 }
 
 section {
@@ -60,7 +60,7 @@ section {
 }
 
 .suite {
-  margin: 0 10px 20px 0;
+  margin: 0 10px 10px 0;
   position: relative;
   float: left;
 }
@@ -69,22 +69,24 @@ section {
   height: 30px;
   width: 100px;
   margin: 0 0 10px;
-  background-color: #8c0f0f;
-  color: #ccc;
+  background-color: #babdb6;
+  color: #222;
   border: none;
   padding: none;
-  text-transform: uppercase;
+  /*text-transform: uppercase;*/
+  text-shadow: 1px 1px 2px #bbb;
   border-radius: 1px;
   -webkit-border-radius: 1px;
   -moz-border-radius: 1px;
 }
 
 .suite button:hover {
-  background-color: #bf1e0f;
+  background-color: #d3d7cf;
 }
 
 .suite button:disabled {
-  background-color: #888;
+  color: #888a85;
+  background-color: #babdb6;
 }
 
 .result {
@@ -120,7 +122,7 @@ section {
 }
 
 .pass {
-  color: #69650B;
+  color: #4e9a06;
 }
 
 .pass::before {
@@ -129,7 +131,7 @@ section {
 }
 
 .fail, .error {
-  color: #44ffff;
+  color: #a40000;
 }
 
 .fail::before, .error::before {
@@ -137,3 +139,21 @@ section {
   margin: 0 10px;
 }
 
+h1, h2 {
+  color: #fff;
+  font-size: 24px;
+  margin: 0 0 12px;
+}
+
+p {
+  font-size: 18px;
+  line-height: 24px;
+}
+
+section a {
+  color: #f57900;
+}
+
+section a:visited {
+  color: #ce5c00;
+}

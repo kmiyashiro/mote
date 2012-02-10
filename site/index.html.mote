@@ -38,8 +38,12 @@
     </header>
 
     <div class="container">
-      <section id="about">{{{about}}}</section>
-      <section id="docs">{{{docs}}}</section>
+      <section id="about">
+        {{>about}}
+      </section>
+      <section id="docs">
+        {{>docs}}
+      </section>
       <section id="bench"></section>
       <section id="spec"></section>
       <section id="code">
@@ -47,6 +51,6 @@
       </section>
     </div>
 
-    {{{templates}}}
+    {{>templates}}
   </body>
 </html>
