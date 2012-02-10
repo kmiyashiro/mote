@@ -195,4 +195,6 @@ $(function() {
   }
 
   new SectionSwitcher('nav');
+
+  hljs.initHighlightingOnLoad();
 });

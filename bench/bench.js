@@ -73,7 +73,7 @@ var recursion = createBenchmark('Recursion', {
 
 var complex = createBenchmark('Complex', {
 	mustache: "<h1>{{header}}</h1>{{#hasItems}}<ul>{{#items}}{{#current}}<li><strong>{{name}}</strong></li>{{/current}}{{^current}}<li><a href=\"{{url}}\">{{name}}</a></li>{{/current}}{{/items}}</ul>{{/hasItems}}{{^items}}<p>The list is empty.</p{{/items}}",
-	mote: "<h1>{{header}}</h1>{{?items}}<ul>{{#items}}{{#current}}<li><strong>{{name}}</strong></li>{{/current}}{{^current}}<li><a href=\"{{url}}\">{{name}}</a></li>{{/current}}{{/items}}</ul>{{/items}}{{^items}}<p>The list is empty.</p{{/items}}",
+	mote: "<h1>{{header}}</h1>{{?items}}<ul>{{#.}}{{#current}}<li><strong>{{name}}</strong></li>{{/current}}{{^current}}<li><a href=\"{{url}}\">{{name}}</a></li>{{/current}}{{/.}}</ul>{{/items}}{{^items}}<p>The list is empty.</p{{/items}}",
 	handlebars: "<h1>{{header}}</h1>{{#if items}}<ul>{{#each items}}{{#if current}}<li><strong>{{name}}</strong></li>{{else}}<li><a href=\"{{url}}\">{{name}}</a></li>{{/if}}{{/each}}</ul>{{else}}<p>The list is empty.</p>{{/if}}",
 	dust: "<h1>{header}</h1>\n"
 		+  "{?items}\n"

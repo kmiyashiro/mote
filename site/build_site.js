@@ -7,12 +7,13 @@ var fs = require('fs')
   , templates = fs.readFileSync(__dirname + '/templates.html', 'utf8');
 
 index = mote.compile(index);
-about = mote.compilePartial('about', about);
-docs = mote.compilePartial('docs', docs);
-templates = mote.compilePartial('templates', templates);
 
 fs.writeFileSync(
   __dirname.replace(/\w+$/, '') + 'index.html',
-  index()
+  index({
+    about: about,
+    docs: docs,
+    templates: templates
+  })
 );
 
