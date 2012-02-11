@@ -2,7 +2,7 @@
 
 For node.js, use [npm][npm]:
 
-    npm install node
+    npm install mote
 
 For the browser, just download mote and include it in your page.
 
