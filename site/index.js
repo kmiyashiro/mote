@@ -194,7 +194,7 @@ $(function() {
     specSection.append((new Spec(name, specs[name])).render().el);
   }
 
-  new SectionSwitcher('nav');
+  new SectionSwitcher('#header li');
 
   hljs.initHighlightingOnLoad();
 });

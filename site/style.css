@@ -11,7 +11,7 @@ body {
   margin: 0 auto;
 }
 
-header {
+#header {
   background-color: rgba(0, 0, 0, 0.80);
   height: 80px;
   position: fixed;
@@ -21,28 +21,27 @@ header {
   z-index: 10;
 }
 
-header h1 {
+#header h1 {
   font-size: 32px;
   font-weight: bold;
   margin: 0 0 16px;
-  /*text-shadow: 0 0 20px #fcaf3e;*/
   display: inline;
   height: 80px;
   line-height: 80px;
 }
 
-nav {
+#header ul {
   display: inline;
   margin: 0;
   padding: 0;
 }
 
-nav li {
+#header ul li {
   display: inline;
   margin-left: 40px;
 }
 
-nav a {
+#header ul a {
   font-size: 20px;
   height: 40px;
   color: #888a85;
@@ -50,11 +49,11 @@ nav a {
   text-decoration: none;
 }
 
-nav a:hover {
+#header ul a:hover {
   color: #d3d7cf;
 }
 
-section {
+.section {
   display: none;
   margin-top: 20px;
 }
@@ -153,11 +152,11 @@ p {
   line-height: 24px;
 }
 
-section a {
+.section a {
   color: #f57900;
 }
 
-section a:visited {
+.section a:visited {
   color: #ce5c00;
 }
 

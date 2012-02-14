@@ -10,7 +10,6 @@
     <link href='site/style.css' rel='stylesheet' type='text/css'>
 
     <!-- scripts -->
-    <script src='site/html5shiv.js'></script>
     <script src='http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js'></script>
     <script src='bench/benchmark.js'></script>
     <script src='bench/hogan.js'></script>
@@ -26,21 +25,21 @@
   </head>
 
   <body>
-    <header>
+    <div id="header">
       <div class="container">
         <h1>mote.js</h1>
-        <nav>
+        <ul>
           <li><a href="#">about</a></li>
           <li><a href="#">docs</a></li>
           <li><a href="#">bench</a></li>
           <li><a href="#">spec</a></li>
           <li><a href="#">code</a></li>
-        </nav>
+        </ul>
       </div>
-    </header>
+    </div>
 
     <div class="container">
-      <section id="about">
+      <div class="section" id="about">
         <h1>mote</h1>
 <p>Mote.js is a spec-compliant, fast implementation of <a href="http://mustache.github.com">mustache</a> templates.
 See how it compares to the other popular engines by clicking the &quot;bench&quot; link
@@ -79,8 +78,8 @@ was just supposed to be a toy.
 
 </p>
 
-      </section>
-      <section id="docs">
+      </div>
+      <div class="section" id="docs">
         <h1>installation</h1>
 <p>For node.js, use <a href="http://npmjs.org">npm</a>:
 
@@ -257,12 +256,12 @@ inside its section, the &apos;.&apos; refers to each item in the <code>items</co
 
 </p>
 
-      </section>
-      <section id="bench"></section>
-      <section id="spec"></section>
-      <section id="code">
+      </div>
+      <div class="section" id="bench"></div>
+      <div class="section" id="spec"></div>
+      <div class="section" id="code">
         <p><a href="https://github.com/satchmorun/mote">Development happens on the Github.</a></p>
-      </section>
+      </div>
     </div>
 
     <!-- templates -->
