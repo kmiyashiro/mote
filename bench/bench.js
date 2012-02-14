@@ -117,15 +117,17 @@ function createBenchmark(benchmarkName, templates, context, partials) {
 
   function noop(){};
 
-  console.log('=== ' + benchmarkName + ' ===');
-  console.log('mustache  :', muFn(context, partials.mustache));
-  console.log('hogan     :', hoTe.render(context, partials.mustache));
-  console.log('mote      :', moFn(context));
-  console.log('handlebars:', hbFn(context));
-  dust.render(benchmarkName, context, function(err, out) {
-    console.log('dust      :', out);
-  });
-  console.log('');
+  if (typeof console != 'undefined' && console.log) {
+    console.log('=== ' + benchmarkName + ' ===');
+    console.log('mustache  :', muFn(context, partials.mustache));
+    console.log('hogan     :', hoTe.render(context, partials.mustache));
+    console.log('mote      :', moFn(context));
+    console.log('handlebars:', hbFn(context));
+    dust.render(benchmarkName, context, function(err, out) {
+      console.log('dust      :', out);
+    });
+    console.log('');
+  }
 
   var suite = new Benchmark.Suite(benchmarkName);
   Benchmark.options.maxTime = 1;
