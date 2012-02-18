@@ -50,7 +50,7 @@ var partial = createBenchmark('Partial', {
 }, {
 	mustache: {partial: "Hello {{name}}! You have {{count}} new messages."},
 	handlebars: {partial: "Hello {{name}}! You have {{count}} new messages."},
-	dust: {partial: "Hello {name}! You have {count} new messages."},
+	dust: {partial: "Hello {name}! You have {count} new messages."}
 });
 
 var recursion = createBenchmark('Recursion', {

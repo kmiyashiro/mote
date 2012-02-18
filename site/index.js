@@ -76,7 +76,7 @@ function Suite(suite){
     hogan: new Result('hogan'),
     mote: new Result('mote'),
     handlebars: new Result('handlebars'),
-    dust: new Result('dust'),
+    dust: new Result('dust')
   };
   this.name = suite.name;
   this.suite = suite;
@@ -103,7 +103,6 @@ Suite.prototype.render = function() {
 };
 
 Suite.prototype.resetResults = function() {
-  var result;
   for (var name in this.results) {
     this.results[name].reset();
   }
