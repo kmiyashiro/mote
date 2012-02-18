@@ -56,7 +56,7 @@ var partial = createBenchmark('Partial', {
 var recursion = createBenchmark('Recursion', {
 	mustache: "{{name}}{{#kids}}{{>recursion}}{{/kids}}",
 	handlebars: "{{name}}{{#each kids}}{{>recursion}}{{/each}}",
-	dust: "{name}{#kids}{>Recursion:./}{/kids}",
+	dust: "{name}{#kids}{>Recursion:./}{/kids}"
 }, {
 	name: '1 ',
 	kids: [{
