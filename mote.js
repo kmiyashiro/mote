@@ -266,7 +266,7 @@ Parser.prototype.openSection = function(content, options) {
   var section = {
     type: options.sectionType,
     key: content,
-    tokens: [],
+    tokens: []
   };
   this.tokenCollector.push(section);
   this.sections.push(section);
