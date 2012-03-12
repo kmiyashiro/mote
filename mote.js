@@ -118,7 +118,7 @@ Parser.prototype.re = {
   whitespace: /[ \t]*/,
   trailing: /[ \t]*(?:\r?\n|$)/,
   tagtype: /\{|&|#|\^|\/|>|=|!|\?/,
-  allowed: /[\w\$\.]+/,
+  allowed: /(\w|[?!\/.-])*/,
   lines: /(.*)(\r?\n)?/g
 };
 
